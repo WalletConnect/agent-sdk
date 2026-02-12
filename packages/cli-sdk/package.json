@@ -1,0 +1,57 @@
+{
+  "name": "@walletconnect/cli-sdk",
+  "description": "WalletConnect CLI SDK — wallet connection and signing for terminal applications",
+  "version": "1.0.0",
+  "private": false,
+  "author": "WalletConnect, Inc. <walletconnect.com>",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "wallet",
+    "walletconnect",
+    "cli",
+    "terminal",
+    "signing",
+    "web3",
+    "ethereum"
+  ],
+  "bin": {
+    "wc": "dist/cli.js"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run --dir test --reporter=verbose",
+    "lint": "eslint --fix 'src/**/*.ts'",
+    "prettier": "prettier --check '{src,test}/**/*.{js,ts,jsx,tsx}'"
+  },
+  "dependencies": {
+    "@walletconnect/keyvaluestorage": "1.1.1",
+    "@walletconnect/sign-client": "2.23.4",
+    "@walletconnect/types": "2.23.4",
+    "open": "^10.1.0",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^3.2.0"
+  }
+}
