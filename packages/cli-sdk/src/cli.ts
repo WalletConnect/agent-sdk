@@ -1,14 +1,14 @@
 import { WalletConnectCLI } from "./client.js";
 
 const METADATA = {
-  name: "wc",
+  name: "walletconnect",
   description: "WalletConnect CLI",
   url: "https://github.com/ARI/walletconnect-cli-sdk",
   icons: [],
 };
 
 function usage(): void {
-  console.log(`Usage: wc <command> [options]
+  console.log(`Usage: walletconnect <command> [options]
 
 Commands:
   connect          Connect to a wallet via QR code
@@ -154,7 +154,7 @@ async function main(): Promise<void> {
     case "sign": {
       const message = filtered[1];
       if (!message) {
-        console.error("Usage: wc sign <message>");
+        console.error("Usage: walletconnect sign <message>");
         process.exit(1);
       }
       await cmdSign(message, browser);
