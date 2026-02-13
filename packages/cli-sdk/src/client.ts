@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { execSync } from "child_process";
 import { homedir } from "os";
 import { join } from "path";
 import { KeyValueStorage } from "@walletconnect/keyvaluestorage";
@@ -113,6 +114,8 @@ export class WalletConnectCLI extends EventEmitter {
       throw new Error("No active session. Call connect() first.");
     }
 
+    this.logRequestDetails(options);
+
     try {
       return await client.request<T>({
         topic,
@@ -142,14 +145,23 @@ export class WalletConnectCLI extends EventEmitter {
 
     try {
       const client = await this.ensureClient();
-      await client.disconnect({
-        topic: this.currentSession.topic,
-        reason: { code: 6000, message: "User disconnected" },
-      });
+      // Absorb relay WebSocket errors during disconnect so they don't
+      // surface as unhandled 'error' events that crash the process.
+      const swallow = () => {};
+      client.core.relayer.on("error", swallow);
+      try {
+        await client.disconnect({
+          topic: this.currentSession.topic,
+          reason: { code: 6000, message: "User disconnected" },
+        });
+      } finally {
+        client.core.relayer.off("error", swallow);
+      }
     } catch {
       // Ignore disconnect errors — session may have already expired
     }
 
+    // Always clean up local state even if relay notification failed
     this.currentSession = null;
     this.emit("disconnect");
   }
@@ -175,6 +187,13 @@ export class WalletConnectCLI extends EventEmitter {
       this.browserUI = null;
     }
     this.removeAllListeners();
+    if (this.signClient) {
+      try {
+        await this.signClient.core.relayer.transportClose();
+      } catch {
+        // ignore cleanup errors
+      }
+    }
     this.signClient = null;
     this.currentSession = null;
   }
@@ -200,6 +219,32 @@ export class WalletConnectCLI extends EventEmitter {
   }
 
   // ---------- Private -------------------------------------------------- //
+
+  private logRequestDetails(options: RequestOptions): void {
+    const walletName = this.currentSession?.peer.metadata.name;
+    if (walletName) {
+      console.log(`\nRequesting approval on ${walletName}...`);
+    }
+
+    if (options.request.method === "eth_sendTransaction") {
+      const params = options.request.params as Array<{ data?: string }>;
+      const data = params[0]?.data;
+      if (data && data !== "0x") {
+        try {
+          const decoded = execSync(`cast 4d ${data}`, {
+            encoding: "utf-8",
+            timeout: 5000,
+            stdio: ["pipe", "pipe", "pipe"],
+          }).trim();
+          if (decoded) {
+            console.log(`\n  Decoded calldata:\n${decoded.split("\n").map((l) => `    ${l}`).join("\n")}\n`);
+          }
+        } catch {
+          // cast not available or decode failed — skip silently
+        }
+      }
+    }
+  }
 
   private async ensureClient(): Promise<InstanceType<typeof SignClient>> {
     if (this.signClient) return this.signClient;

@@ -1,4 +1,5 @@
 import { WalletConnectCLI } from "./client.js";
+import { resolveProjectId, setConfigValue, getConfigValue } from "./config.js";
 
 const METADATA = {
   name: "walletconnect",
@@ -11,23 +12,28 @@ function usage(): void {
   console.log(`Usage: walletconnect <command> [options]
 
 Commands:
-  connect          Connect to a wallet via QR code
-  whoami           Show current session info
-  sign <message>   Sign a message with the connected wallet
-  disconnect       Disconnect the current session
+  connect              Connect to a wallet via QR code
+  whoami               Show current session info
+  sign <message>       Sign a message with the connected wallet
+  disconnect           Disconnect the current session
+  config set <k> <v>   Set a config value (e.g. project-id)
+  config get <k>       Get a config value
 
 Options:
   --browser        Use browser UI instead of terminal QR code
   --help           Show this help message
 
+Config keys:
+  project-id       WalletConnect Cloud project ID
+
 Environment:
-  WALLETCONNECT_PROJECT_ID   Required for connect and sign commands`);
+  WALLETCONNECT_PROJECT_ID   Overrides config project-id when set`);
 }
 
 function getProjectId(): string {
-  const id = process.env.WALLETCONNECT_PROJECT_ID;
+  const id = resolveProjectId();
   if (!id) {
-    console.error("Error: WALLETCONNECT_PROJECT_ID environment variable is required.");
+    console.error("Error: No project ID found. Set via: walletconnect config set project-id <id>");
     process.exit(1);
   }
   return id;
@@ -102,11 +108,8 @@ async function cmdSign(message: string, browser: boolean): Promise<void> {
       console.log();
     }
 
-    const walletName = result.session.peer.metadata.name;
     const { chain, address } = parseAccount(result.accounts[0]);
     const hexMessage = "0x" + Buffer.from(message, "utf8").toString("hex");
-
-    console.log(`Requesting signature from ${walletName}...\n`);
 
     const signature = await sdk.request<string>({
       chainId: chain,
@@ -163,6 +166,32 @@ async function main(): Promise<void> {
     case "disconnect":
       await cmdDisconnect();
       break;
+    case "config": {
+      const action = filtered[1];
+      const key = filtered[2];
+      if (action === "set") {
+        const value = filtered[3];
+        if (key === "project-id" && value) {
+          setConfigValue("projectId", value);
+          console.log(`Saved project-id to ~/.walletconnect-cli/config.json`);
+        } else {
+          console.error("Usage: walletconnect config set project-id <value>");
+          process.exit(1);
+        }
+      } else if (action === "get") {
+        if (key === "project-id") {
+          const value = getConfigValue("projectId");
+          console.log(value || "(not set)");
+        } else {
+          console.error("Usage: walletconnect config get project-id");
+          process.exit(1);
+        }
+      } else {
+        console.error("Usage: walletconnect config <set|get> <key> [value]");
+        process.exit(1);
+      }
+      break;
+    }
     case "--help":
     case "-h":
     case undefined:
@@ -175,7 +204,10 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+main().then(
+  () => process.exit(0),
+  (err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  },
+);

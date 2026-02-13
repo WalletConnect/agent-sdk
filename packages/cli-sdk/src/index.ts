@@ -5,6 +5,7 @@ export { WalletConnectCLI } from "./client.js";
 export { createSessionManager } from "./session.js";
 export { createTerminalUI } from "./terminal-ui.js";
 export { createBrowserUI } from "./browser-ui/server.js";
+export { getConfigValue, setConfigValue, resolveProjectId } from "./config.js";
 
 export type {
   WalletConnectCLIOptions,
