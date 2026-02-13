@@ -18,8 +18,8 @@ function readConfig(): Config {
 }
 
 function writeConfig(config: Config): void {
-  mkdirSync(CONFIG_DIR, { recursive: true });
-  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + "\n");
+  mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + "\n", { mode: 0o600 });
 }
 
 /** Get a config value */

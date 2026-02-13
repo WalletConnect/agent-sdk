@@ -4,11 +4,11 @@ import type { TxData } from "./contracts.js";
 
 let requestId = 1;
 
-async function rpcRequest(
+async function rpcRequest<T = string>(
   method: string,
   params: unknown[],
   rpcUrl: string,
-): Promise<string> {
+): Promise<T> {
   const res = await fetch(rpcUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -24,7 +24,7 @@ async function rpcRequest(
     throw new Error(`RPC request failed: ${res.status} ${res.statusText}`);
   }
 
-  const json = (await res.json()) as { result?: string; error?: { message: string } };
+  const json = (await res.json()) as { result?: T; error?: { message: string } };
 
   if (json.error) {
     throw new Error(`RPC error: ${json.error.message}`);
@@ -64,6 +64,12 @@ export async function estimateGas(
   return `0x${buffered.toString(16)}`;
 }
 
+interface TxReceipt {
+  status: string;
+  blockNumber: string;
+  transactionHash: string;
+}
+
 /** Wait for a transaction to be confirmed (polls eth_getTransactionReceipt) */
 export async function waitForTx(
   txHash: string,
@@ -73,14 +79,20 @@ export async function waitForTx(
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      const result = await rpcRequest(
+      const receipt = await rpcRequest<TxReceipt | null>(
         "eth_getTransactionReceipt",
         [txHash],
         rpcUrl,
       );
-      if (result) return;
-    } catch {
-      // receipt not available yet
+      if (receipt) {
+        if (receipt.status === "0x0") {
+          throw new Error(`Transaction ${txHash} reverted`);
+        }
+        return;
+      }
+    } catch (err) {
+      // Re-throw revert errors, swallow "receipt not available yet"
+      if (err instanceof Error && err.message.includes("reverted")) throw err;
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }

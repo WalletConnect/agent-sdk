@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { homedir } from "os";
 import { join } from "path";
 import { KeyValueStorage } from "@walletconnect/keyvaluestorage";
@@ -231,7 +231,7 @@ export class WalletConnectCLI extends EventEmitter {
       const data = params[0]?.data;
       if (data && data !== "0x") {
         try {
-          const decoded = execSync(`cast 4d ${data}`, {
+          const decoded = execFileSync("cast", ["4d", data], {
             encoding: "utf-8",
             timeout: 5000,
             stdio: ["pipe", "pipe", "pipe"],
