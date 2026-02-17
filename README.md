@@ -1,5 +1,7 @@
 # WalletConnect Agent SDK
 
+> **Beta (v0.1.x)** — This project is under active development. APIs and CLI interfaces may change between releases. Not yet recommended for production use.
+
 Monorepo for WalletConnect agent tooling — CLI tools and libraries for wallet connection, message signing, and WCT staking from the terminal.
 
 ## Packages
