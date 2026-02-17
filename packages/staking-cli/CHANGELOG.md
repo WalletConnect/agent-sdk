@@ -1,5 +1,14 @@
 # @walletconnect/staking-cli
 
+## 0.1.2
+
+### Patch Changes
+
+- [#9](https://github.com/WalletConnect/agent-sdk/pull/9) [`f9eed1c`](https://github.com/WalletConnect/agent-sdk/commit/f9eed1c78d8b7aebee386ca322ae1b3179982e54) Thanks [@arein](https://github.com/arein)! - Validate remaining lock time before calling increaseLockAmount — shows a clear error when lock expires in less than 1 week instead of sending a transaction that reverts on-chain
+
+- Updated dependencies []:
+  - @walletconnect/cli-sdk@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes
