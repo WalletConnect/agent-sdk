@@ -4,6 +4,14 @@
 
 Monorepo for WalletConnect agent tooling — CLI tools and libraries for wallet connection, message signing, and WCT staking from the terminal.
 
+### Agent Skills
+
+Install the accompanying Claude Code / agent skills:
+
+```bash
+npx skills add WalletConnect/agent-sdk
+```
+
 ## Packages
 
 | Package | Binary | Description |
@@ -159,14 +167,6 @@ import { stake, status, balance, fetchStaking, formatWCT } from "@walletconnect/
 ```
 
 The staking package exports transaction builders, formatting utilities, and API helpers for building custom staking integrations.
-
-## Agent Skills
-
-Install the accompanying Claude Code / agent skills for interactive wallet and staking workflows:
-
-```bash
-npx skills add WalletConnect/agent-sdk
-```
 
 ## Development
 
