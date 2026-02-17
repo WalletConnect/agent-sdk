@@ -13,6 +13,8 @@ import {
   L2_WCT_ADDRESS,
   STAKE_WEIGHT_ADDRESS,
   STAKING_REWARD_DISTRIBUTOR_ADDRESS,
+  ONE_WEEK_IN_SECONDS,
+  MIN_REMAINING_LOCK_SECONDS,
 } from "../src/constants.js";
 
 const TEST_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678";
@@ -71,5 +73,12 @@ describe("call data builders", () => {
     const tx = buildLocksCallData(TEST_ADDRESS);
     expect(tx.to).toBe(STAKE_WEIGHT_ADDRESS);
     expect(tx.data).toMatch(/^0x/);
+  });
+});
+
+describe("constants", () => {
+  it("MIN_REMAINING_LOCK_SECONDS equals one week", () => {
+    expect(MIN_REMAINING_LOCK_SECONDS).toBe(ONE_WEEK_IN_SECONDS);
+    expect(MIN_REMAINING_LOCK_SECONDS).toBe(604800);
   });
 });
