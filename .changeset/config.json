@@ -1,0 +1,16 @@
+{
+  "$schema": "https://github.com/changesets/changesets/blob/main/packages/config/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "WalletConnect/agent-sdk" }
+  ],
+  "commit": false,
+  "fixed": [
+    ["@walletconnect/cli-sdk", "@walletconnect/staking-cli"]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

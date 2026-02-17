@@ -12,6 +12,13 @@ vi.mock("open", () => ({
 
 const mockSession = createMockSession();
 const mockSignClient = {
+  core: {
+    relayer: {
+      on: vi.fn(),
+      off: vi.fn(),
+      transportClose: vi.fn(async () => {}),
+    },
+  },
   session: {
     getAll: vi.fn(() => [mockSession]),
     get: vi.fn(() => mockSession),

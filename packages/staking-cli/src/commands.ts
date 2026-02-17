@@ -11,7 +11,6 @@ import {
   buildCreateLock,
   buildUpdateLock,
   buildIncreaseLockAmount,
-  buildIncreaseUnlockTime,
   buildWithdrawAll,
   buildClaim,
   buildBalanceOfCallData,

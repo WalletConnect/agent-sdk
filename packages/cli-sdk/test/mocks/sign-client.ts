@@ -52,6 +52,13 @@ export function createMockSignClient(sessions: SessionTypes.Struct[] = []) {
   const eventListeners = new Map<string, Function[]>();
 
   const mockClient = {
+    core: {
+      relayer: {
+        on: vi.fn(),
+        off: vi.fn(),
+        transportClose: vi.fn(async () => {}),
+      },
+    },
     session: {
       getAll: vi.fn(() => sessions),
       get: vi.fn((topic: string) => sessions.find((s) => s.topic === topic) || null),
