@@ -4,6 +4,7 @@ import {
   CAIP2_CHAIN_ID,
   STAKE_WEIGHT_ADDRESS,
   ONE_WEEK_IN_SECONDS,
+  MIN_REMAINING_LOCK_SECONDS,
   WCT_DECIMALS,
 } from "./constants.js";
 import {
@@ -97,6 +98,19 @@ export async function stake(
     console.log("\nUpdating lock (amount + time)...");
     txHash = await sendTx(wallet, address, buildUpdateLock(amountWei, effectiveUnlockTime));
   } else {
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const remaining = lock.end - now;
+
+    if (remaining < BigInt(MIN_REMAINING_LOCK_SECONDS)) {
+      const days = Number(remaining) / 86400;
+      console.error(
+        `\nCannot add to position: lock expires in ~${Math.ceil(days)} day(s), ` +
+        `which is below the minimum remaining period of 1 week.\n` +
+        `Re-run with a longer --weeks value to extend your lock.`,
+      );
+      return;
+    }
+
     console.log("\nIncreasing lock amount...");
     txHash = await sendTx(wallet, address, buildIncreaseLockAmount(amountWei));
   }

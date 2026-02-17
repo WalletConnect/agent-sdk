@@ -16,6 +16,9 @@ export const FOUNDATION_API_URL = "https://api.walletconnect.network";
 /** Time constants */
 export const ONE_WEEK_IN_SECONDS = 604800;
 
+/** Minimum remaining lock time required to increase lock amount (1 week) */
+export const MIN_REMAINING_LOCK_SECONDS = ONE_WEEK_IN_SECONDS;
+
 /** WCT token decimals */
 export const WCT_DECIMALS = 18;
 
