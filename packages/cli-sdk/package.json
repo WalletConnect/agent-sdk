@@ -1,7 +1,7 @@
 {
   "name": "@walletconnect/cli-sdk",
   "description": "WalletConnect CLI SDK — wallet connection and signing for terminal applications",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "author": "WalletConnect, Inc. <walletconnect.com>",
   "license": "SEE LICENSE IN LICENSE.md",
