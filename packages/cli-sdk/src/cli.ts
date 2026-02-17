@@ -75,7 +75,8 @@ async function cmdConnect(browser: boolean): Promise<void> {
 }
 
 async function cmdWhoami(): Promise<void> {
-  const sdk = createSDK({});
+  const projectId = getProjectId();
+  const sdk = createSDK({ projectId });
   try {
     const result = await sdk.tryRestore();
     if (!result) {
@@ -127,7 +128,8 @@ async function cmdSign(message: string, browser: boolean): Promise<void> {
 }
 
 async function cmdDisconnect(): Promise<void> {
-  const sdk = createSDK({});
+  const projectId = getProjectId();
+  const sdk = createSDK({ projectId });
   try {
     const result = await sdk.tryRestore();
     if (!result) {
