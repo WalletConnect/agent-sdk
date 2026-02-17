@@ -25,7 +25,9 @@ npm run changeset:publish   # Publish to npm
 
 ## Changesets (Required for Every PR)
 
-This repo uses [changesets](https://github.com/changesets/changesets) for versioning and releases. **Every PR that changes package behavior must include a changeset file.**
+This repo uses [changesets](https://github.com/changesets/changesets) for versioning and releases. **Every PR that changes package code must include a changeset file.**
+
+PRs that only touch docs, CI config, or other non-package files do **not** need a changeset.
 
 ### How to add a changeset
 
