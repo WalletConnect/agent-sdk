@@ -12,15 +12,17 @@ function usage(): void {
   console.log(`Usage: walletconnect <command> [options]
 
 Commands:
-  connect              Connect to a wallet via QR code
-  whoami               Show current session info
-  sign <message>       Sign a message with the connected wallet
-  disconnect           Disconnect the current session
-  config set <k> <v>   Set a config value (e.g. project-id)
-  config get <k>       Get a config value
+  connect                       Connect to a wallet via QR code
+  whoami                        Show current session info
+  sign <message>                Sign a message with the connected wallet
+  sign-typed-data <json>        Sign EIP-712 typed data (JSON string)
+  disconnect                    Disconnect the current session
+  config set <k> <v>            Set a config value (e.g. project-id)
+  config get <k>                Get a config value
 
 Options:
   --browser        Use browser UI instead of terminal QR code
+  --json           Output as JSON (for whoami)
   --help           Show this help message
 
 Config keys:
@@ -74,24 +76,37 @@ async function cmdConnect(browser: boolean): Promise<void> {
   }
 }
 
-async function cmdWhoami(): Promise<void> {
+async function cmdWhoami(json: boolean): Promise<void> {
   const projectId = getProjectId();
   const sdk = createSDK({ projectId });
   try {
     const result = await sdk.tryRestore();
     if (!result) {
-      console.log("Not connected.");
+      if (json) {
+        console.log(JSON.stringify({ connected: false }));
+      } else {
+        console.log("Not connected.");
+      }
       process.exit(1);
     }
     const walletName = result.session.peer.metadata.name;
-    console.log(`  Wallet:  ${walletName}`);
-    for (const account of result.accounts) {
-      const { chain, address } = parseAccount(account);
-      console.log(`  Chain:   ${chain}`);
-      console.log(`  Address: ${address}`);
+    if (json) {
+      const accounts = result.accounts.map((a) => parseAccount(a));
+      console.log(JSON.stringify({
+        wallet: walletName,
+        accounts,
+        expires: result.session.expiry,
+      }));
+    } else {
+      console.log(`  Wallet:  ${walletName}`);
+      for (const account of result.accounts) {
+        const { chain, address } = parseAccount(account);
+        console.log(`  Chain:   ${chain}`);
+        console.log(`  Address: ${address}`);
+      }
+      const expiry = new Date(result.session.expiry * 1000);
+      console.log(`  Expires: ${expiry.toLocaleString()}`);
     }
-    const expiry = new Date(result.session.expiry * 1000);
-    console.log(`  Expires: ${expiry.toLocaleString()}`);
   } finally {
     await sdk.destroy();
   }
@@ -127,6 +142,42 @@ async function cmdSign(message: string, browser: boolean): Promise<void> {
   }
 }
 
+async function cmdSignTypedData(typedDataJson: string, browser: boolean): Promise<void> {
+  const projectId = getProjectId();
+  const sdk = createSDK({ projectId, browser });
+
+  try {
+    let result = await sdk.tryRestore();
+    if (!result) {
+      console.log("No existing session. Connecting...\n");
+      result = await sdk.connect();
+      console.log();
+    }
+
+    const { chain, address } = parseAccount(result.accounts[0]);
+
+    // Validate JSON before sending
+    try {
+      JSON.parse(typedDataJson);
+    } catch {
+      console.error("Error: Invalid JSON for typed data. Provide a valid EIP-712 JSON string.");
+      process.exit(1);
+    }
+
+    const signature = await sdk.request<string>({
+      chainId: chain,
+      request: {
+        method: "eth_signTypedData_v4",
+        params: [address, typedDataJson],
+      },
+    });
+
+    console.log(JSON.stringify({ address, signature }));
+  } finally {
+    await sdk.destroy();
+  }
+}
+
 async function cmdDisconnect(): Promise<void> {
   const projectId = getProjectId();
   const sdk = createSDK({ projectId });
@@ -146,7 +197,8 @@ async function cmdDisconnect(): Promise<void> {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const browser = args.includes("--browser");
-  const filtered = args.filter((a) => a !== "--browser");
+  const json = args.includes("--json");
+  const filtered = args.filter((a) => a !== "--browser" && a !== "--json");
   const command = filtered[0];
 
   switch (command) {
@@ -154,7 +206,7 @@ async function main(): Promise<void> {
       await cmdConnect(browser);
       break;
     case "whoami":
-      await cmdWhoami();
+      await cmdWhoami(json);
       break;
     case "sign": {
       const message = filtered[1];
@@ -163,6 +215,15 @@ async function main(): Promise<void> {
         process.exit(1);
       }
       await cmdSign(message, browser);
+      break;
+    }
+    case "sign-typed-data": {
+      const typedData = filtered[1];
+      if (!typedData) {
+        console.error("Usage: walletconnect sign-typed-data <json>");
+        process.exit(1);
+      }
+      await cmdSignTypedData(typedData, browser);
       break;
     }
     case "disconnect":
