@@ -1,5 +1,12 @@
 # @walletconnect/staking-cli
 
+## 0.2.0
+
+### Patch Changes
+
+- Updated dependencies [[`45b8345`](https://github.com/WalletConnect/agent-sdk/commit/45b83452d5647790dd90b601a9f48c7e705de102)]:
+  - @walletconnect/cli-sdk@0.2.0
+
 ## 0.1.2
 
 ### Patch Changes
