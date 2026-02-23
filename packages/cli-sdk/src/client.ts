@@ -223,7 +223,7 @@ export class WalletConnectCLI extends EventEmitter {
   private logRequestDetails(options: RequestOptions): void {
     const walletName = this.currentSession?.peer.metadata.name;
     if (walletName) {
-      console.log(`\nRequesting approval on ${walletName}...`);
+      console.error(`Requesting approval on ${walletName}...`);
     }
 
     if (options.request.method === "eth_sendTransaction") {
