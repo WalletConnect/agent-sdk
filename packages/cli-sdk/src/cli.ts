@@ -16,6 +16,7 @@ Commands:
   whoami                        Show current session info
   sign <message>                Sign a message with the connected wallet
   sign-typed-data <json>        Sign EIP-712 typed data (JSON string)
+  send-transaction <json>       Send a transaction (JSON with to, data, value, gas)
   disconnect                    Disconnect the current session
   config set <k> <v>            Set a config value (e.g. project-id)
   config get <k>                Get a config value
@@ -23,6 +24,7 @@ Commands:
 Options:
   --browser        Use browser UI instead of terminal QR code
   --json           Output as JSON (for whoami)
+  --chain <id>     Specify chain (e.g. eip155:10) for connect
   --help           Show this help message
 
 Config keys:
@@ -41,11 +43,12 @@ function getProjectId(): string {
   return id;
 }
 
-function createSDK(options: { projectId?: string; browser?: boolean }): WalletConnectCLI {
+function createSDK(options: { projectId?: string; browser?: boolean; chains?: string[] }): WalletConnectCLI {
   return new WalletConnectCLI({
     projectId: options.projectId || "",
     metadata: METADATA,
     ui: options.browser ? "browser" : "terminal",
+    ...(options.chains ? { chains: options.chains } : {}),
   });
 }
 
@@ -58,9 +61,9 @@ function parseAccount(caip10: string): { chain: string; address: string } {
   };
 }
 
-async function cmdConnect(browser: boolean): Promise<void> {
+async function cmdConnect(browser: boolean, chains?: string[]): Promise<void> {
   const projectId = getProjectId();
-  const sdk = createSDK({ projectId, browser });
+  const sdk = createSDK({ projectId, browser, chains });
 
   try {
     console.log("Scan this QR code with your wallet app:\n");
@@ -90,21 +93,21 @@ async function cmdWhoami(json: boolean): Promise<void> {
       process.exit(1);
     }
     const walletName = result.session.peer.metadata.name;
+    const accounts = result.accounts.map((a) => parseAccount(a));
+    const expiry = new Date(result.session.expiry * 1000);
+
     if (json) {
-      const accounts = result.accounts.map((a) => parseAccount(a));
       console.log(JSON.stringify({
         wallet: walletName,
         accounts,
-        expires: result.session.expiry,
+        expires: expiry.toISOString(),
       }));
     } else {
       console.log(`  Wallet:  ${walletName}`);
-      for (const account of result.accounts) {
-        const { chain, address } = parseAccount(account);
+      for (const { chain, address } of accounts) {
         console.log(`  Chain:   ${chain}`);
         console.log(`  Address: ${address}`);
       }
-      const expiry = new Date(result.session.expiry * 1000);
       console.log(`  Expires: ${expiry.toLocaleString()}`);
     }
   } finally {
@@ -178,6 +181,36 @@ async function cmdSignTypedData(typedDataJson: string, browser: boolean): Promis
   }
 }
 
+async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<void> {
+  const projectId = getProjectId();
+  const tx = JSON.parse(jsonInput);
+  const targetChain = tx.chainId;
+  const sdk = createSDK({ projectId, browser, ...(targetChain ? { chains: [targetChain] } : {}) });
+
+  try {
+    let result = await sdk.tryRestore();
+    if (!result) {
+      process.stderr.write("No existing session. Connecting...\n\n");
+      result = await sdk.connect();
+    }
+
+    const chainId = targetChain || parseAccount(result.accounts[0]).chain;
+    const from = tx.from || parseAccount(result.accounts[0]).address;
+
+    const txHash = await sdk.request<string>({
+      chainId,
+      request: {
+        method: "eth_sendTransaction",
+        params: [{ from, to: tx.to, data: tx.data, value: tx.value || "0x0", gas: tx.gas }],
+      },
+    });
+
+    process.stdout.write(JSON.stringify({ transactionHash: txHash }));
+  } finally {
+    await sdk.destroy();
+  }
+}
+
 async function cmdDisconnect(): Promise<void> {
   const projectId = getProjectId();
   const sdk = createSDK({ projectId });
@@ -198,12 +231,24 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const browser = args.includes("--browser");
   const json = args.includes("--json");
-  const filtered = args.filter((a) => a !== "--browser" && a !== "--json");
+  const chains: string[] = [];
+  const filtered: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--browser" || arg === "--json") continue;
+    if (arg === "--chain" && i + 1 < args.length) {
+      chains.push(args[++i]);
+    } else if (arg.startsWith("--chain=")) {
+      chains.push(arg.slice("--chain=".length));
+    } else {
+      filtered.push(arg);
+    }
+  }
   const command = filtered[0];
 
   switch (command) {
     case "connect":
-      await cmdConnect(browser);
+      await cmdConnect(browser, chains.length > 0 ? chains : undefined);
       break;
     case "whoami":
       await cmdWhoami(json);
@@ -224,6 +269,15 @@ async function main(): Promise<void> {
         process.exit(1);
       }
       await cmdSignTypedData(typedData, browser);
+      break;
+    }
+    case "send-transaction": {
+      const txJson = filtered[1];
+      if (!txJson) {
+        console.error("Usage: walletconnect send-transaction '<json>'");
+        process.exit(1);
+      }
+      await cmdSendTransaction(txJson, browser);
       break;
     }
     case "disconnect":

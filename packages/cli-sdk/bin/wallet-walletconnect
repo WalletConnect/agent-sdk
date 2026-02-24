@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+#
+# wallet-walletconnect — CLI Wallet Protocol adapter for WalletConnect
+#
+# Wraps the `walletconnect` binary to conform to the CWP interface.
+# Requires `walletconnect` to be on PATH (provided by @walletconnect/cli-sdk).
+#
+
+set -euo pipefail
+
+command_which() {
+  command -v walletconnect >/dev/null 2>&1
+}
+
+case "${1:-}" in
+  info)
+    cat <<'EOF'
+{"name":"walletconnect","version":"0.1.0","rdns":"com.walletconnect.cli","capabilities":["accounts","sign-typed-data","send-transaction"],"chains":["eip155"]}
+EOF
+    ;;
+
+  accounts)
+    if ! command_which; then
+      echo '{"error":"walletconnect binary not found on PATH","code":"NOT_CONNECTED"}'
+      exit 5
+    fi
+
+    # walletconnect whoami --json returns:
+    #   { "wallet": "...", "accounts": [{ "chain": "eip155:1", "address": "0x..." }], "expires": "..." }
+    # or exits non-zero with { "connected": false }
+    output=$(walletconnect whoami --json 2>/dev/null) || {
+      echo '{"error":"No wallet connected. Run `walletconnect connect` first.","code":"NOT_CONNECTED"}'
+      exit 5
+    }
+
+    # Extract just the accounts array into CWP format
+    node -e "
+      const data = JSON.parse(process.argv[1]);
+      if (!data.accounts) { process.stderr.write('not connected'); process.exit(1); }
+      process.stdout.write(JSON.stringify({ accounts: data.accounts }));
+    " "$output" || {
+      echo '{"error":"No wallet connected. Run \`walletconnect connect\` first.","code":"NOT_CONNECTED"}'
+      exit 5
+    }
+    ;;
+
+  sign-typed-data)
+    if ! command_which; then
+      echo '{"error":"walletconnect binary not found on PATH","code":"NOT_CONNECTED"}'
+      exit 5
+    fi
+
+    # Read JSON from stdin: { "account": "0x...", "typedData": { ... } }
+    input=$(cat)
+    if [ -z "$input" ]; then
+      echo '{"error":"No input provided on stdin","code":"INVALID_INPUT"}'
+      exit 1
+    fi
+
+    # Extract typedData object from input
+    # We need node for reliable JSON parsing since bash can't handle nested JSON
+    typed_data=$(node -e "
+      const input = JSON.parse(process.argv[1]);
+      if (!input.typedData) { process.stderr.write('Missing typedData field'); process.exit(1); }
+      process.stdout.write(JSON.stringify(input.typedData));
+    " "$input" 2>/dev/null) || {
+      echo '{"error":"Invalid input: missing typedData field","code":"INVALID_INPUT"}'
+      exit 1
+    }
+
+    # Delegate to walletconnect sign-typed-data
+    output=$(walletconnect sign-typed-data "$typed_data" 2>/dev/null) || {
+      echo '{"error":"Signing failed or was rejected","code":"USER_REJECTED"}'
+      exit 3
+    }
+
+    # walletconnect outputs: {"address":"0x...","signature":"0x..."}
+    # CWP expects: {"signature":"0x..."}
+    # Extract just the signature
+    node -e "
+      const lines = process.argv[1].split('\n');
+      const jsonLine = lines.find(l => l.startsWith('{'));
+      if (!jsonLine) { process.stderr.write('No JSON output'); process.exit(1); }
+      const parsed = JSON.parse(jsonLine);
+      process.stdout.write(JSON.stringify({ signature: parsed.signature }));
+    " "$output"
+    ;;
+
+  send-transaction)
+    if ! command_which; then
+      echo '{"error":"walletconnect binary not found on PATH","code":"NOT_CONNECTED"}'
+      exit 5
+    fi
+
+    # Read JSON from stdin: { "account": "0x...", "chain": "eip155:10", "transaction": { to, data, value, gas } }
+    input=$(cat)
+    if [ -z "$input" ]; then
+      echo '{"error":"No input provided on stdin","code":"INVALID_INPUT"}'
+      exit 1
+    fi
+
+    # Build the transaction JSON for the walletconnect CLI
+    tx_json=$(node -e "
+      const input = JSON.parse(process.argv[1]);
+      if (!input.transaction || !input.account) {
+        process.stderr.write('Missing transaction or account');
+        process.exit(1);
+      }
+      const tx = input.transaction;
+      const chainId = input.chain || 'eip155:1';
+      process.stdout.write(JSON.stringify({
+        from: input.account,
+        to: tx.to,
+        data: tx.data,
+        value: tx.value || '0x0',
+        gas: tx.gas,
+        chainId,
+      }));
+    " "$input" 2>/dev/null) || {
+      echo '{"error":"Invalid input: missing transaction or account","code":"INVALID_INPUT"}'
+      exit 1
+    }
+
+    # Delegate to walletconnect send-transaction
+    output=$(walletconnect send-transaction "$tx_json" 2>/dev/null) || {
+      echo '{"error":"Transaction failed or was rejected","code":"USER_REJECTED"}'
+      exit 3
+    }
+
+    # walletconnect outputs: {"transactionHash":"0x..."}
+    # CWP expects the same format
+    echo "$output"
+    ;;
+
+  *)
+    echo '{"error":"Unsupported operation","code":"UNSUPPORTED_OPERATION"}'
+    exit 2
+    ;;
+esac
