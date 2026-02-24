@@ -1,6 +1,6 @@
 ---
 "@walletconnect/cli-sdk": minor
-"@walletconnect/staking-cli": major
+"@walletconnect/staking-cli": minor
 ---
 
 Migrate staking-cli from WalletConnect SDK to CLI Wallet Protocol (CWP).
