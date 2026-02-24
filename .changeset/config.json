@@ -6,7 +6,7 @@
   ],
   "commit": false,
   "fixed": [
-    ["@walletconnect/cli-sdk", "@walletconnect/staking-cli", "@walletconnect/companion-wallet", "@anthropic-ai/wallet-cli"]
+    ["@walletconnect/cli-sdk", "@walletconnect/staking-cli", "@walletconnect/companion-wallet"]
   ],
   "linked": [],
   "access": "public",

@@ -7,6 +7,23 @@ export { createTerminalUI } from "./terminal-ui.js";
 export { createBrowserUI } from "./browser-ui/server.js";
 export { getConfigValue, setConfigValue, resolveProjectId } from "./config.js";
 
+// CWP (CLI Wallet Protocol) — provider discovery, execution, and selection
+export {
+  walletExec,
+  WalletExecError,
+  ExitCode,
+  discoverProviders,
+  getDefaultProvider,
+  getProvider,
+  selectProvider,
+} from "./cwp/index.js";
+export type {
+  WalletErrorCode,
+  WalletProviderInfo,
+  WalletConfig,
+  SelectProviderOptions,
+} from "./cwp/index.js";
+
 export type {
   WalletConnectCLIOptions,
   ConnectOptions,

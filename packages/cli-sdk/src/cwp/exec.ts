@@ -57,17 +57,16 @@ export async function walletExec(
     });
 
     let stdout = "";
-    let stderr = "";
 
     proc.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
     });
 
-    proc.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
+    proc.stderr.on("data", () => {
+      // drain stderr to prevent blocking
     });
 
-    proc.on("error", (err: NodeJS.ErrnoException) => {
+    proc.on("error", (err: Error & { code?: string }) => {
       if (err.code === "ENOENT") {
         reject(
           new WalletExecError(

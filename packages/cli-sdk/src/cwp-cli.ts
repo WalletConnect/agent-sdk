@@ -1,5 +1,5 @@
-import { discoverProviders, getProvider, getDefaultProvider } from "./discovery.js";
-import { walletExec, WalletExecError, ExitCode } from "./exec.js";
+import { discoverProviders, getProvider, getDefaultProvider } from "./cwp/discovery.js";
+import { walletExec, WalletExecError, ExitCode } from "./cwp/exec.js";
 
 const OPERATIONS = [
   "accounts",

@@ -31,7 +31,8 @@
   ],
   "bin": {
     "walletconnect": "dist/cli.js",
-    "wallet-walletconnect": "bin/wallet-walletconnect"
+    "wallet-walletconnect": "bin/wallet-walletconnect",
+    "wallet": "dist/cwp-cli.js"
   },
   "sideEffects": false,
   "scripts": {

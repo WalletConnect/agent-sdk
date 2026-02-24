@@ -39,7 +39,7 @@
     "prettier": "prettier --check '{src,test}/**/*.{js,ts,jsx,tsx}'"
   },
   "dependencies": {
-    "@anthropic-ai/wallet-cli": "*",
+    "@walletconnect/cli-sdk": "*",
     "viem": "^2.30.0"
   },
   "devDependencies": {

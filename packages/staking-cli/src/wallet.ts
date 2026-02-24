@@ -1,4 +1,4 @@
-import { walletExec } from "@anthropic-ai/wallet-cli";
+import { walletExec } from "@walletconnect/cli-sdk";
 import type { TxData } from "./contracts.js";
 import { CAIP2_CHAIN_ID } from "./constants.js";
 import { estimateGas } from "./rpc.js";

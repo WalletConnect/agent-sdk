@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { createCwpSender } from "../src/wallet.js";
 
 // Mock wallet-cli's walletExec
-vi.mock("@anthropic-ai/wallet-cli", () => ({
+vi.mock("@walletconnect/cli-sdk", () => ({
   walletExec: vi.fn(),
 }));
 
@@ -11,7 +11,7 @@ vi.mock("../src/rpc.js", () => ({
   estimateGas: vi.fn().mockResolvedValue("0x5208"),
 }));
 
-import { walletExec } from "@anthropic-ai/wallet-cli";
+import { walletExec } from "@walletconnect/cli-sdk";
 import { estimateGas } from "../src/rpc.js";
 
 const mockedWalletExec = vi.mocked(walletExec);

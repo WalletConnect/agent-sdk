@@ -1,5 +1,5 @@
-import { selectProvider, walletExec } from "@anthropic-ai/wallet-cli";
-import type { WalletProviderInfo } from "@anthropic-ai/wallet-cli";
+import { selectProvider, walletExec } from "@walletconnect/cli-sdk";
+import type { WalletProviderInfo } from "@walletconnect/cli-sdk";
 import { CAIP2_CHAIN_ID } from "./constants.js";
 import { stake, unstake, claim, status, balance } from "./commands.js";
 import { createCwpSender } from "./wallet.js";
