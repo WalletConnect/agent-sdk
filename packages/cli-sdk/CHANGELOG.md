@@ -1,5 +1,15 @@
 # @walletconnect/cli-sdk
 
+## 0.4.0
+
+### Patch Changes
+
+- [#16](https://github.com/WalletConnect/agent-sdk/pull/16) [`f14eb4d`](https://github.com/WalletConnect/agent-sdk/commit/f14eb4dbc93efdf24a0e38d6866616187c8e25d0) Thanks [@arein](https://github.com/arein)! - Add WCT token to companion-wallet registry, balance CWP operation, and fix disconnect timeout.
+
+  **companion-wallet**: Add WCT token on Optimism (eip155:10), add `balance` operation that returns native ETH + registered ERC-20 balances, export new `getTokenBalance`/`getBalances` functions and balance types.
+
+  **cli-sdk**: Time-box relay disconnect (5s) and transport close (3s) to prevent 30s+ hangs after transactions complete.
+
 ## 0.3.0
 
 ### Minor Changes
