@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateAndStore, loadKey, listAddresses } from "./keystore.js";
 import { signMessage, signTypedData, signTransaction } from "./signer.js";
-import { sendTransaction } from "./rpc.js";
+import { sendTransaction, getBalances } from "./rpc.js";
 import { SUPPORTED_CHAINS } from "./chains.js";
 import { fund } from "./fund.js";
 import { drain } from "./drain.js";
@@ -25,6 +25,7 @@ import {
   type SignTypedDataInput,
   type SignTransactionInput,
   type SendTransactionInput,
+  type BalanceInput,
   type GrantSessionInput,
   type RevokeSessionInput,
   type GetSessionInput,
@@ -84,6 +85,7 @@ async function handleInfo(): Promise<void> {
       "sign-typed-data",
       "sign-transaction",
       "send-transaction",
+      "balance",
       "grant-session",
       "revoke-session",
       "get-session",
@@ -210,6 +212,42 @@ async function handleSendTransaction(): Promise<void> {
   }
 
   respond({ transactionHash });
+}
+
+async function handleBalance(): Promise<void> {
+  let account = parseCliArg("account");
+  let chain = parseCliArg("chain");
+
+  // Also accept piped JSON input
+  const input = await parseInput<BalanceInput>();
+  if (input?.account) account = input.account;
+  if (input?.chain) chain = input.chain;
+
+  if (!account) {
+    const addresses = listAddresses();
+    if (addresses.length === 0) {
+      respondError("No wallet found. Run 'generate' first.", "INVALID_INPUT");
+      process.exit(ExitCode.ERROR);
+    }
+    account = addresses[0];
+  }
+
+  try {
+    if (process.stdin.isTTY && !chain) {
+      chain = await selectChain();
+    }
+
+    chain = chain || "eip155:10";
+
+    const balances = await getBalances(account as `0x${string}`, chain);
+    respond({ balances });
+  } catch (err) {
+    respondError(
+      err instanceof Error ? err.message : "Balance check failed",
+      "BALANCE_ERROR",
+    );
+    process.exit(ExitCode.ERROR);
+  }
 }
 
 async function handleGrantSession(): Promise<void> {
@@ -377,6 +415,7 @@ const HANDLERS: Record<Operation, () => Promise<void>> = {
   "sign-typed-data": handleSignTypedData,
   "sign-transaction": handleSignTransaction,
   "send-transaction": handleSendTransaction,
+  balance: handleBalance,
   "grant-session": handleGrantSession,
   "revoke-session": handleRevokeSession,
   "get-session": handleGetSession,

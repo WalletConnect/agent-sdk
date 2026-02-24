@@ -150,15 +150,19 @@ export class WalletConnectCLI extends EventEmitter {
       const swallow = () => {};
       client.core.relayer.on("error", swallow);
       try {
-        await client.disconnect({
-          topic: this.currentSession.topic,
-          reason: { code: 6000, message: "User disconnected" },
-        });
+        // Time-box the relay disconnect — the relay ack can take 30s+
+        await withTimeout(
+          client.disconnect({
+            topic: this.currentSession.topic,
+            reason: { code: 6000, message: "User disconnected" },
+          }),
+          5000,
+        );
       } finally {
         client.core.relayer.off("error", swallow);
       }
     } catch {
-      // Ignore disconnect errors — session may have already expired
+      // Ignore disconnect errors — session may have already expired or timed out
     }
 
     // Always clean up local state even if relay notification failed
@@ -189,7 +193,11 @@ export class WalletConnectCLI extends EventEmitter {
     this.removeAllListeners();
     if (this.signClient) {
       try {
-        await this.signClient.core.relayer.transportClose();
+        // Time-box the transport close — WebSocket teardown can hang
+        await withTimeout(
+          this.signClient.core.relayer.transportClose(),
+          3000,
+        );
       } catch {
         // ignore cleanup errors
       }
@@ -312,4 +320,15 @@ export class WalletConnectCLI extends EventEmitter {
     }
     return String(error);
   }
+}
+
+/** Race a promise against a timeout. Rejects if the timeout fires first. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Timeout")), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
 }

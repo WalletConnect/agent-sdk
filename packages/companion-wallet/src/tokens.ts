@@ -13,11 +13,16 @@ const USDC_ADDRESSES: Record<string, Hex> = {
   "eip155:10": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
 };
 
+/** WCT contract addresses per CAIP-2 chain */
+const WCT_ADDRESSES: Record<string, Hex> = {
+  "eip155:10": "0xeF4461891DfB3AC8572cCf7C794664A8DD927945",
+};
+
 /** Tokens available on each chain */
 const TOKEN_REGISTRY: Record<string, string[]> = {
   "eip155:1": ["eth", "usdc"],
   "eip155:8453": ["eth", "usdc"],
-  "eip155:10": ["eth", "usdc"],
+  "eip155:10": ["eth", "usdc", "wct"],
 };
 
 /**
@@ -43,6 +48,14 @@ export function getToken(symbol: string, chain: string): TokenInfo {
       throw new Error(`USDC not supported on chain ${chain}`);
     }
     return { symbol: "USDC", decimals: 6, address };
+  }
+
+  if (s === "wct") {
+    const address = WCT_ADDRESSES[chain];
+    if (!address) {
+      throw new Error(`WCT not supported on chain ${chain}`);
+    }
+    return { symbol: "WCT", decimals: 18, address };
   }
 
   throw new Error(`Unknown token: ${symbol}`);
