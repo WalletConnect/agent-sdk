@@ -1,10 +1,10 @@
 {
-  "name": "@walletconnect/cli-sdk",
-  "description": "WalletConnect CLI SDK — wallet connection and signing for terminal applications",
-  "version": "0.2.0",
+  "name": "@anthropic-ai/wallet-cli",
+  "description": "CLI Wallet Protocol orchestrator — discover and interact with wallet providers",
+  "version": "0.1.0",
   "private": false,
-  "author": "WalletConnect, Inc. <walletconnect.com>",
-  "license": "SEE LICENSE IN LICENSE.md",
+  "author": "Anthropic, PBC",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -17,35 +17,24 @@
     }
   },
   "files": [
-    "dist",
-    "bin"
+    "dist"
   ],
   "keywords": [
     "wallet",
-    "walletconnect",
     "cli",
-    "terminal",
     "signing",
     "web3",
-    "ethereum"
+    "cwp",
+    "cli-wallet-protocol"
   ],
   "bin": {
-    "walletconnect": "dist/cli.js",
-    "wallet-walletconnect": "bin/wallet-walletconnect"
+    "wallet": "dist/cli.js"
   },
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
     "test": "vitest run --dir test --reporter=verbose",
-    "lint": "eslint --fix 'src/**/*.ts'",
-    "prettier": "prettier --check '{src,test}/**/*.{js,ts,jsx,tsx}'"
-  },
-  "dependencies": {
-    "@walletconnect/keyvaluestorage": "1.1.1",
-    "@walletconnect/sign-client": "2.23.4",
-    "@walletconnect/types": "2.23.4",
-    "open": "^10.1.0",
-    "qrcode-terminal": "^0.12.0"
+    "lint": "eslint --fix 'src/**/*.ts'"
   },
   "devDependencies": {
     "@types/node": "^25.2.3",

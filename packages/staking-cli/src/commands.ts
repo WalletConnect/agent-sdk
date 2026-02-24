@@ -1,7 +1,5 @@
 import { parseUnits } from "viem";
-import type { WalletConnectCLI } from "@walletconnect/cli-sdk";
 import {
-  CAIP2_CHAIN_ID,
   STAKE_WEIGHT_ADDRESS,
   ONE_WEEK_IN_SECONDS,
   MIN_REMAINING_LOCK_SECONDS,
@@ -17,11 +15,11 @@ import {
   buildBalanceOfCallData,
   buildAllowanceCallData,
   buildLocksCallData,
-  type TxData,
 } from "./contracts.js";
-import { readUint256, readLocks, estimateGas, waitForTx } from "./rpc.js";
+import { readUint256, readLocks, waitForTx } from "./rpc.js";
 import { fetchStaking, fetchStakeWeight } from "./api.js";
 import { formatWCT, formatDate, calculateAPY, calculateWeeklyAPY, label } from "./format.js";
+import type { WalletSender } from "./wallet.js";
 
 // ---- Helpers ---------------------------------------------------------- //
 
@@ -31,25 +29,10 @@ function computeUnlockTime(weeks: number): bigint {
     BigInt(ONE_WEEK_IN_SECONDS));
 }
 
-async function sendTx(
-  wallet: WalletConnectCLI,
-  from: string,
-  tx: TxData,
-): Promise<string> {
-  const gas = await estimateGas(from, tx);
-  return wallet.request<string>({
-    chainId: CAIP2_CHAIN_ID,
-    request: {
-      method: "eth_sendTransaction",
-      params: [{ from, to: tx.to, data: tx.data, value: "0x0", gas }],
-    },
-  });
-}
-
 // ---- Commands --------------------------------------------------------- //
 
 export async function stake(
-  wallet: WalletConnectCLI,
+  wallet: WalletSender,
   address: string,
   amount: string,
   weeks: number,
@@ -83,7 +66,7 @@ export async function stake(
   const allowance = await readUint256(buildAllowanceCallData(address, STAKE_WEIGHT_ADDRESS));
   if (allowance < amountWei) {
     console.log("\nApproving WCT spend...");
-    const approveTxHash = await sendTx(wallet, address, buildApprove(STAKE_WEIGHT_ADDRESS, amountWei));
+    const approveTxHash = await wallet.sendTransaction(address, buildApprove(STAKE_WEIGHT_ADDRESS, amountWei));
     console.log(label("Approve tx", approveTxHash));
     console.log("Waiting for confirmation...");
     await waitForTx(approveTxHash);
@@ -93,10 +76,10 @@ export async function stake(
 
   if (!hasPosition) {
     console.log("\nCreating new lock...");
-    txHash = await sendTx(wallet, address, buildCreateLock(amountWei, effectiveUnlockTime));
+    txHash = await wallet.sendTransaction(address, buildCreateLock(amountWei, effectiveUnlockTime));
   } else if (extendingTime) {
     console.log("\nUpdating lock (amount + time)...");
-    txHash = await sendTx(wallet, address, buildUpdateLock(amountWei, effectiveUnlockTime));
+    txHash = await wallet.sendTransaction(address, buildUpdateLock(amountWei, effectiveUnlockTime));
   } else {
     const now = BigInt(Math.floor(Date.now() / 1000));
     const remaining = lock.end - now;
@@ -112,7 +95,7 @@ export async function stake(
     }
 
     console.log("\nIncreasing lock amount...");
-    txHash = await sendTx(wallet, address, buildIncreaseLockAmount(amountWei));
+    txHash = await wallet.sendTransaction(address, buildIncreaseLockAmount(amountWei));
   }
 
   console.log(label("Tx hash", txHash));
@@ -120,7 +103,7 @@ export async function stake(
 }
 
 export async function unstake(
-  wallet: WalletConnectCLI,
+  wallet: WalletSender,
   address: string,
 ): Promise<void> {
   const staking = await fetchStaking(address);
@@ -140,13 +123,13 @@ export async function unstake(
   }
 
   console.log("\nWithdrawing all staked WCT...");
-  const txHash = await sendTx(wallet, address, buildWithdrawAll());
+  const txHash = await wallet.sendTransaction(address, buildWithdrawAll());
   console.log(label("Tx hash", txHash));
   console.log("\nUnstake submitted successfully.");
 }
 
 export async function claim(
-  wallet: WalletConnectCLI,
+  wallet: WalletSender,
   address: string,
 ): Promise<void> {
   const staking = await fetchStaking(address);
@@ -157,7 +140,7 @@ export async function claim(
   }
 
   console.log(`\nClaiming ${staking.rewards.amount} WCT in rewards...`);
-  const txHash = await sendTx(wallet, address, buildClaim(address));
+  const txHash = await wallet.sendTransaction(address, buildClaim(address));
   console.log(label("Tx hash", txHash));
   console.log("\nClaim submitted successfully.");
 }

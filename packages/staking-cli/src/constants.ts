@@ -27,11 +27,3 @@ export const APY_SLOPE = -0.06464;
 export const APY_INTERCEPT = 12.0808;
 export const APY_STAKE_WEIGHT_DIVISOR = 1_000_000;
 export const MAX_LOCK_WEEKS = 104;
-
-/** CLI metadata for WalletConnect pairing */
-export const CLI_METADATA = {
-  name: "walletconnect-staking",
-  description: "WalletConnect WCT Staking CLI",
-  url: "https://walletconnect.com",
-  icons: [],
-};

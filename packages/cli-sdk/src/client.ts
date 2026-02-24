@@ -223,7 +223,7 @@ export class WalletConnectCLI extends EventEmitter {
   private logRequestDetails(options: RequestOptions): void {
     const walletName = this.currentSession?.peer.metadata.name;
     if (walletName) {
-      console.error(`Requesting approval on ${walletName}...`);
+      process.stderr.write(`\nRequesting approval on ${walletName}...\n`);
     }
 
     if (options.request.method === "eth_sendTransaction") {
@@ -237,7 +237,7 @@ export class WalletConnectCLI extends EventEmitter {
             stdio: ["pipe", "pipe", "pipe"],
           }).trim();
           if (decoded) {
-            console.log(`\n  Decoded calldata:\n${decoded.split("\n").map((l) => `    ${l}`).join("\n")}\n`);
+            process.stderr.write(`\n  Decoded calldata:\n${decoded.split("\n").map((l) => `    ${l}`).join("\n")}\n\n`);
           }
         } catch {
           // cast not available or decode failed — skip silently
