@@ -1,6 +1,6 @@
 export { generateAndStore, loadKey, loadMnemonic, listAddresses, keyFilePath } from "./keystore.js";
 export { signMessage, signTypedData, signTransaction, normalizeTransaction } from "./signer.js";
-export { sendTransaction, getBalance } from "./rpc.js";
+export { sendTransaction, getBalance, getTokenBalance, getBalances } from "./rpc.js";
 export { resolveChain, getTransport, parseChainId, getChainName, SUPPORTED_CHAINS } from "./chains.js";
 export { getToken, getTokenSymbols, parseTokenAmount, buildErc20Transfer } from "./tokens.js";
 export type { TokenInfo } from "./tokens.js";
@@ -38,6 +38,9 @@ export type {
   SessionState,
   SessionPermission,
   SessionPolicy,
+  BalanceInput,
+  BalanceEntry,
+  BalanceResponse,
   WalletFile,
   ErrorResponse,
 } from "./types.js";

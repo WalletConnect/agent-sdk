@@ -23,6 +23,7 @@ export type Operation =
   | "grant-session"
   | "revoke-session"
   | "get-session"
+  | "balance"
   | "fund"
   | "drain";
 
@@ -148,6 +149,24 @@ export interface SessionState {
   revoked: boolean;
   callCounts: Record<string, number>;
   totalValue: Record<string, string>;
+}
+
+/** Balance input */
+export interface BalanceInput {
+  account: string;
+  chain: string;
+}
+
+/** Individual token balance entry */
+export interface BalanceEntry {
+  token: string;
+  balance: string;
+  raw: string;
+}
+
+/** Balance response */
+export interface BalanceResponse {
+  balances: BalanceEntry[];
 }
 
 /** CWP error response written to stdout on failure */

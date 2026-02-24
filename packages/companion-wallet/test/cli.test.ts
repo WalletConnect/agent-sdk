@@ -59,6 +59,7 @@ describe("cli", () => {
       expect(info.capabilities).toContain("sign-typed-data");
       expect(info.capabilities).toContain("sign-transaction");
       expect(info.capabilities).toContain("send-transaction");
+      expect(info.capabilities).toContain("balance");
       expect(info.capabilities).toContain("grant-session");
       expect(info.chains).toContain("eip155:1");
       expect(info.chains).toContain("eip155:8453");
