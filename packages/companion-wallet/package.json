@@ -1,7 +1,7 @@
 {
   "name": "@walletconnect/companion-wallet",
   "description": "Companion wallet (BETA) — CWP provider with local key generation and signing. Not for production use with real funds.",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "private": false,
   "author": "WalletConnect, Inc. <walletconnect.com>",
   "license": "SEE LICENSE IN LICENSE.md",
