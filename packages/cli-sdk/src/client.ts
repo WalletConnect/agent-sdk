@@ -31,7 +31,6 @@ const DEFAULT_CHAINS = ["eip155:1"];
 
 const SOLANA_METHODS = ["solana_signTransaction", "solana_signMessage"];
 const SOLANA_EVENTS: string[] = [];
-const SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 const DEFAULT_STORAGE_PATH = join(homedir(), ".walletconnect-cli");
 
 export class WalletConnectCLI extends EventEmitter {
