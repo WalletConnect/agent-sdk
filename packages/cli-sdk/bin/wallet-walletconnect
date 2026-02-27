@@ -15,7 +15,7 @@ command_which() {
 case "${1:-}" in
   info)
     cat <<'EOF'
-{"name":"walletconnect","version":"0.1.0","rdns":"com.walletconnect.cli","capabilities":["accounts","sign-typed-data","send-transaction"],"chains":["eip155"]}
+{"name":"walletconnect","version":"0.1.0","rdns":"com.walletconnect.cli","capabilities":["accounts","sign-typed-data","send-transaction"],"chains":["eip155","solana"]}
 EOF
     ;;
 
@@ -99,27 +99,53 @@ EOF
       exit 1
     fi
 
-    # Build the transaction JSON for the walletconnect CLI
-    tx_json=$(node -e "
+    # Detect namespace from chain
+    namespace=$(node -e "
       const input = JSON.parse(process.argv[1]);
-      if (!input.transaction || !input.account) {
-        process.stderr.write('Missing transaction or account');
-        process.exit(1);
+      const chain = input.chain || '';
+      process.stdout.write(chain.split(':')[0] || 'eip155');
+    " "$input" 2>/dev/null)
+
+    if [ "$namespace" = "solana" ]; then
+      # Solana: pass transaction and chainId directly to walletconnect CLI
+      tx_json=$(node -e "
+        const input = JSON.parse(process.argv[1]);
+        if (!input.transaction) {
+          process.stderr.write('Missing transaction');
+          process.exit(1);
+        }
+        const chainId = input.chain || 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+        process.stdout.write(JSON.stringify({
+          transaction: typeof input.transaction === 'string' ? input.transaction : input.transaction.transaction,
+          chainId,
+        }));
+      " "$input" 2>/dev/null) || {
+        echo '{"error":"Invalid input: missing transaction","code":"INVALID_INPUT"}'
+        exit 1
       }
-      const tx = input.transaction;
-      const chainId = input.chain || 'eip155:1';
-      process.stdout.write(JSON.stringify({
-        from: input.account,
-        to: tx.to,
-        data: tx.data,
-        value: tx.value || '0x0',
-        gas: tx.gas,
-        chainId,
-      }));
-    " "$input" 2>/dev/null) || {
-      echo '{"error":"Invalid input: missing transaction or account","code":"INVALID_INPUT"}'
-      exit 1
-    }
+    else
+      # EVM: build EVM transaction JSON
+      tx_json=$(node -e "
+        const input = JSON.parse(process.argv[1]);
+        if (!input.transaction || !input.account) {
+          process.stderr.write('Missing transaction or account');
+          process.exit(1);
+        }
+        const tx = input.transaction;
+        const chainId = input.chain || 'eip155:1';
+        process.stdout.write(JSON.stringify({
+          from: input.account,
+          to: tx.to,
+          data: tx.data,
+          value: tx.value || '0x0',
+          gas: tx.gas,
+          chainId,
+        }));
+      " "$input" 2>/dev/null) || {
+        echo '{"error":"Invalid input: missing transaction or account","code":"INVALID_INPUT"}'
+        exit 1
+      }
+    fi
 
     # Delegate to walletconnect send-transaction
     output=$(walletconnect send-transaction "$tx_json" 2>/dev/null) || {
@@ -127,7 +153,7 @@ EOF
       exit 3
     }
 
-    # walletconnect outputs: {"transactionHash":"0x..."}
+    # walletconnect outputs: {"transactionHash":"0x..."} or {"signedTransaction":"..."} or {"signature":"..."}
     # CWP expects the same format
     echo "$output"
     ;;

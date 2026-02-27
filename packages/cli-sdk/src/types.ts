@@ -49,7 +49,7 @@ export interface RequestOptions {
   /** JSON-RPC request */
   request: {
     method: string;
-    params: unknown[];
+    params: unknown[] | Record<string, unknown>;
   };
 }
 
