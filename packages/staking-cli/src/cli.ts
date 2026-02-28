@@ -4,6 +4,8 @@ import { CAIP2_CHAIN_ID } from "./constants.js";
 import { stake, unstake, claim, status, balance } from "./commands.js";
 import { createCwpSender } from "./wallet.js";
 
+declare const __VERSION__: string;
+
 function usage(): void {
   console.log(`Usage: walletconnect-staking <command> [options]
 
@@ -17,6 +19,7 @@ Commands:
 Options:
   --address=0x...          Address (required for status/balance, optional for wallet commands)
   --wallet <name>          Use a specific wallet provider
+  --version                Show version number
   --help                   Show this help message`);
 }
 
@@ -38,6 +41,9 @@ function parseArgs(argv: string[]): {
       wallet = argv[++i];
     } else if (arg.startsWith("--wallet=")) {
       wallet = arg.slice("--wallet=".length);
+    } else if (arg === "--version" || arg === "-v") {
+      console.log(__VERSION__);
+      process.exit(0);
     } else if (arg === "--help" || arg === "-h") {
       positional.unshift("--help");
     } else if (!arg.startsWith("-")) {

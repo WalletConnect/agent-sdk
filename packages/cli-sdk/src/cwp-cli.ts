@@ -1,6 +1,8 @@
 import { discoverProviders, getProvider, getDefaultProvider } from "./cwp/discovery.js";
 import { walletExec, WalletExecError, ExitCode } from "./cwp/exec.js";
 
+declare const __VERSION__: string;
+
 const OPERATIONS = [
   "accounts",
   "sign-message",
@@ -25,6 +27,7 @@ Commands:
 Options:
   --wallet <name>              Use a specific wallet provider
   --json                       Output as JSON (default)
+  --version                    Show version number
   --help                       Show this help message`);
 }
 
@@ -39,6 +42,9 @@ function parseArgs(argv: string[]): {
     const arg = argv[i];
     if (arg === "--wallet" && i + 1 < argv.length) {
       wallet = argv[++i];
+    } else if (arg === "--version" || arg === "-v") {
+      console.log(__VERSION__);
+      process.exit(0);
     } else if (arg === "--help") {
       usage();
       process.exit(0);
