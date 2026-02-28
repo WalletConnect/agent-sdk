@@ -216,15 +216,14 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
       });
 
       // Wallet may return { signature } or { signedTransaction } or a string
-      if (typeof response === "string") {
-        process.stdout.write(JSON.stringify({ signedTransaction: response }));
-      } else if (response.signedTransaction) {
-        process.stdout.write(JSON.stringify({ signedTransaction: response.signedTransaction }));
-      } else if (response.signature) {
-        process.stdout.write(JSON.stringify({ signature: response.signature }));
-      } else {
-        process.stdout.write(JSON.stringify(response));
-      }
+      const output = typeof response === "string"
+        ? { signedTransaction: response }
+        : response.signedTransaction
+          ? { signedTransaction: response.signedTransaction }
+          : response.signature
+            ? { signature: response.signature }
+            : response;
+      process.stdout.write(JSON.stringify(output));
     } else {
       // EVM: existing eth_sendTransaction flow
       const from = tx.from || parseAccount(result.accounts[0]).address;

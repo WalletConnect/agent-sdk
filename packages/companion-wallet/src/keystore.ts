@@ -44,10 +44,11 @@ export function loadKey(address: string): Hex {
   const raw = readFileSync(filePath, "utf-8");
   const data = JSON.parse(raw) as WalletFile;
 
-  const account = mnemonicToAccount(data.mnemonic);
-  return account.getHdKey().privateKey
-    ? (`0x${Buffer.from(account.getHdKey().privateKey!).toString("hex")}` as Hex)
-    : (() => { throw new Error("Failed to derive private key from mnemonic"); })();
+  const hdKey = mnemonicToAccount(data.mnemonic).getHdKey();
+  if (!hdKey.privateKey) {
+    throw new Error("Failed to derive private key from mnemonic");
+  }
+  return `0x${Buffer.from(hdKey.privateKey).toString("hex")}` as Hex;
 }
 
 /**
@@ -72,6 +73,19 @@ export function listAddresses(): string[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * Resolve an account address: use the provided one, or fall back to the first stored address.
+ */
+export function resolveAccount(account?: string): string {
+  if (account) return account;
+
+  const addresses = listAddresses();
+  if (addresses.length === 0) {
+    throw new Error("No wallet found. Run 'companion-wallet generate' first.");
+  }
+  return addresses[0];
 }
 
 /**

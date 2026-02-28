@@ -1,6 +1,6 @@
 import { parseEther, type Hex } from "viem";
 import { withWallet, resolveProjectId } from "@walletconnect/cli-sdk";
-import { listAddresses } from "./keystore.js";
+import { resolveAccount } from "./keystore.js";
 import { getToken, parseTokenAmount, buildErc20Transfer } from "./tokens.js";
 
 export interface FundOptions {
@@ -110,14 +110,4 @@ export async function fund(options: FundOptions): Promise<FundResult> {
   }
 
   return result;
-}
-
-function resolveAccount(account?: string): string {
-  if (account) return account;
-
-  const addresses = listAddresses();
-  if (addresses.length === 0) {
-    throw new Error("No wallet found. Run 'companion-wallet generate' first.");
-  }
-  return addresses[0];
 }

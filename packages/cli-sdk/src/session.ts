@@ -15,11 +15,9 @@ export function createSessionManager(): SessionManager {
       if (sessions.length === 0) return null;
 
       const now = Math.floor(Date.now() / 1000);
-      const valid = sessions
+      return sessions
         .filter((s) => s.expiry > now)
-        .sort((a, b) => b.expiry - a.expiry);
-
-      return valid.length > 0 ? valid[0] : null;
+        .sort((a, b) => b.expiry - a.expiry)[0] ?? null;
     },
 
     isSessionValid(session: SessionTypes.Struct): boolean {
