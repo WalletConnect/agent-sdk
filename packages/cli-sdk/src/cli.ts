@@ -1,6 +1,8 @@
 import { WalletConnectCLI } from "./client.js";
 import { resolveProjectId, setConfigValue, getConfigValue } from "./config.js";
 
+declare const __VERSION__: string;
+
 const METADATA = {
   name: "WalletConnect Agent SDK",
   description: "WalletConnect CLI",
@@ -25,6 +27,7 @@ Options:
   --browser        Use browser UI instead of terminal QR code
   --json           Output as JSON (for whoami)
   --chain <id>     Specify chain (e.g. eip155:10, solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp) for connect
+  --version        Show version number
   --help           Show this help message
 
 Config keys:
@@ -339,6 +342,10 @@ async function main(): Promise<void> {
       }
       break;
     }
+    case "--version":
+    case "-v":
+      console.log(__VERSION__);
+      break;
     case "--help":
     case "-h":
     case undefined:
