@@ -1,5 +1,15 @@
 # @walletconnect/cli-sdk
 
+## 0.5.0
+
+### Minor Changes
+
+- [#18](https://github.com/WalletConnect/agent-sdk/pull/18) [`d8ebd99`](https://github.com/WalletConnect/agent-sdk/commit/d8ebd993ba2107f6df7ee3652f771c1240157a88) Thanks [@arein](https://github.com/arein)! - Add Solana chain support: multi-namespace connect, solana_signTransaction, and companion wallet Solana transaction handling
+
+### Patch Changes
+
+- [#20](https://github.com/WalletConnect/agent-sdk/pull/20) [`48eb0f5`](https://github.com/WalletConnect/agent-sdk/commit/48eb0f587221b4f87e7fa41e39e4e598dfd09d92) Thanks [@arein](https://github.com/arein)! - Add --version flag to all CLIs (walletconnect, wallet, walletconnect-staking)
+
 ## 0.4.0
 
 ### Patch Changes
