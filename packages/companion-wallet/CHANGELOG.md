@@ -1,5 +1,12 @@
 # @walletconnect/companion-wallet
 
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies [[`48eb0f5`](https://github.com/WalletConnect/agent-sdk/commit/48eb0f587221b4f87e7fa41e39e4e598dfd09d92), [`d8ebd99`](https://github.com/WalletConnect/agent-sdk/commit/d8ebd993ba2107f6df7ee3652f771c1240157a88)]:
+  - @walletconnect/cli-sdk@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes
