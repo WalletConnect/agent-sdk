@@ -58,16 +58,12 @@ export async function getBalances(
 ): Promise<BalanceEntry[]> {
   const symbols = getTokenSymbols(caip2Chain);
 
-  const entries = await Promise.all(
+  return Promise.all(
     symbols.map(async (sym) => {
       const token = getToken(sym, caip2Chain);
-      let raw: bigint;
-
-      if (token.address) {
-        raw = await getTokenBalance(address, token.address, caip2Chain);
-      } else {
-        raw = await getBalance(address, caip2Chain);
-      }
+      const raw = token.address
+        ? await getTokenBalance(address, token.address, caip2Chain)
+        : await getBalance(address, caip2Chain);
 
       return {
         token: token.symbol,
@@ -76,8 +72,6 @@ export async function getBalances(
       };
     }),
   );
-
-  return entries;
 }
 
 /**
@@ -118,6 +112,5 @@ export async function sendTransaction(
     });
   }
 
-  const hash = await walletClient.sendTransaction(request);
-  return hash;
+  return walletClient.sendTransaction(request);
 }
