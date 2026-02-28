@@ -6,7 +6,7 @@ import {
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { loadKey, listAddresses } from "./keystore.js";
+import { loadKey, resolveAccount } from "./keystore.js";
 import { resolveChain, getTransport } from "./chains.js";
 import { getToken } from "./tokens.js";
 
@@ -131,14 +131,4 @@ export async function drain(options: DrainOptions): Promise<DrainResult> {
     amount,
     token: tokenInfo.symbol,
   };
-}
-
-function resolveAccount(account?: string): string {
-  if (account) return account;
-
-  const addresses = listAddresses();
-  if (addresses.length === 0) {
-    throw new Error("No wallet found. Run 'companion-wallet generate' first.");
-  }
-  return addresses[0];
 }

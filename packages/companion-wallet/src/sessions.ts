@@ -123,8 +123,7 @@ export function recordSessionUsage(
   const session = loadSession(sessionId);
 
   // Increment call count
-  const key = operation;
-  session.callCounts[key] = (session.callCounts[key] || 0) + 1;
+  session.callCounts[operation] = (session.callCounts[operation] || 0) + 1;
 
   // Track value for send-transaction
   if (input?.transaction?.value) {

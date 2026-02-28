@@ -67,23 +67,10 @@ export async function walletExec(
     });
 
     proc.on("error", (err: Error & { code?: string }) => {
-      if (err.code === "ENOENT") {
-        reject(
-          new WalletExecError(
-            `Wallet provider not found: ${binary}`,
-            ExitCode.GENERAL_ERROR,
-            "INTERNAL_ERROR",
-          ),
-        );
-      } else {
-        reject(
-          new WalletExecError(
-            err.message,
-            ExitCode.GENERAL_ERROR,
-            "INTERNAL_ERROR",
-          ),
-        );
-      }
+      const message = err.code === "ENOENT"
+        ? `Wallet provider not found: ${binary}`
+        : err.message;
+      reject(new WalletExecError(message, ExitCode.GENERAL_ERROR, "INTERNAL_ERROR"));
     });
 
     proc.on("close", (code) => {

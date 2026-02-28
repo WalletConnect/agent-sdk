@@ -1,4 +1,4 @@
-export { generateAndStore, loadKey, loadMnemonic, listAddresses, keyFilePath } from "./keystore.js";
+export { generateAndStore, loadKey, loadMnemonic, listAddresses, resolveAccount, keyFilePath } from "./keystore.js";
 export { signMessage, signTypedData, signTransaction, normalizeTransaction } from "./signer.js";
 export { sendTransaction, getBalance, getTokenBalance, getBalances } from "./rpc.js";
 export { resolveChain, getTransport, parseChainId, getChainName, SUPPORTED_CHAINS } from "./chains.js";

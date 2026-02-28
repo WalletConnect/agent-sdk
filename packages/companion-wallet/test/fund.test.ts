@@ -12,15 +12,27 @@ vi.mock("@walletconnect/cli-sdk", () => ({
 
 vi.mock("../src/keystore.js", () => ({
   listAddresses: vi.fn().mockReturnValue(["0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"]),
+  resolveAccount: vi.fn().mockImplementation((account?: string) => {
+    if (account) return account;
+    const addresses = ["0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"];
+    if (addresses.length === 0) throw new Error("No wallet found. Run 'companion-wallet generate' first.");
+    return addresses[0];
+  }),
 }));
 
 import { fund } from "../src/fund.js";
 import { resolveProjectId } from "@walletconnect/cli-sdk";
-import { listAddresses } from "../src/keystore.js";
+import { listAddresses, resolveAccount } from "../src/keystore.js";
 
 describe("fund", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Reset resolveAccount to default behavior
+    vi.mocked(resolveAccount).mockImplementation((account?: string) => {
+      if (account) return account;
+      return "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+    });
 
     // Default mock: withWallet calls callback with mock wallet and accounts
     mockWithWallet.mockImplementation(
@@ -158,7 +170,9 @@ describe("fund", () => {
   });
 
   it("throws when no stored addresses and no account provided", async () => {
-    vi.mocked(listAddresses).mockReturnValueOnce([]);
+    vi.mocked(resolveAccount).mockImplementationOnce(() => {
+      throw new Error("No wallet found. Run 'companion-wallet generate' first.");
+    });
 
     await expect(
       fund({

@@ -109,5 +109,5 @@ export async function readLocks(
     [{ type: "int128" }, { type: "uint256" }, { type: "uint256" }],
     result as `0x${string}`,
   );
-  return { amount: BigInt(amount), end, transferredAmount };
+  return { amount, end, transferredAmount };
 }
