@@ -2,9 +2,9 @@ import { WalletConnectCLI } from "./client.js";
 import { resolveProjectId, setConfigValue, getConfigValue } from "./config.js";
 
 const METADATA = {
-  name: "walletconnect",
+  name: "WalletConnect Agent SDK",
   description: "WalletConnect CLI",
-  url: "https://github.com/ARI/walletconnect-cli-sdk",
+  url: "https://walletconnect.network",
   icons: [],
 };
 
@@ -16,7 +16,7 @@ Commands:
   whoami                        Show current session info
   sign <message>                Sign a message with the connected wallet
   sign-typed-data <json>        Sign EIP-712 typed data (JSON string)
-  send-transaction <json>       Send a transaction (JSON with to, data, value, gas)
+  send-transaction <json>       Send a transaction (EVM: to, data, value, gas; Solana: transaction, chainId)
   disconnect                    Disconnect the current session
   config set <k> <v>            Set a config value (e.g. project-id)
   config get <k>                Get a config value
@@ -24,7 +24,7 @@ Commands:
 Options:
   --browser        Use browser UI instead of terminal QR code
   --json           Output as JSON (for whoami)
-  --chain <id>     Specify chain (e.g. eip155:10) for connect
+  --chain <id>     Specify chain (e.g. eip155:10, solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp) for connect
   --help           Show this help message
 
 Config keys:
@@ -59,6 +59,11 @@ function parseAccount(caip10: string): { chain: string; address: string } {
     chain: caip10.slice(0, lastColon),
     address: caip10.slice(lastColon + 1),
   };
+}
+
+function getNamespace(chainId: string): string {
+  const colonIndex = chainId.indexOf(":");
+  return colonIndex >= 0 ? chainId.slice(0, colonIndex) : chainId;
 }
 
 async function cmdConnect(browser: boolean, chains?: string[]): Promise<void> {
@@ -195,17 +200,42 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
     }
 
     const chainId = targetChain || parseAccount(result.accounts[0]).chain;
-    const from = tx.from || parseAccount(result.accounts[0]).address;
+    const namespace = getNamespace(chainId);
 
-    const txHash = await sdk.request<string>({
-      chainId,
-      request: {
-        method: "eth_sendTransaction",
-        params: [{ from, to: tx.to, data: tx.data, value: tx.value || "0x0", gas: tx.gas }],
-      },
-    });
+    if (namespace === "solana") {
+      // Solana: use solana_signTransaction with object params
+      const response = await sdk.request<{ signature?: string; signedTransaction?: string } | string>({
+        chainId,
+        request: {
+          method: "solana_signTransaction",
+          params: { transaction: tx.transaction } as unknown as Record<string, unknown>,
+        },
+      });
 
-    process.stdout.write(JSON.stringify({ transactionHash: txHash }));
+      // Wallet may return { signature } or { signedTransaction } or a string
+      if (typeof response === "string") {
+        process.stdout.write(JSON.stringify({ signedTransaction: response }));
+      } else if (response.signedTransaction) {
+        process.stdout.write(JSON.stringify({ signedTransaction: response.signedTransaction }));
+      } else if (response.signature) {
+        process.stdout.write(JSON.stringify({ signature: response.signature }));
+      } else {
+        process.stdout.write(JSON.stringify(response));
+      }
+    } else {
+      // EVM: existing eth_sendTransaction flow
+      const from = tx.from || parseAccount(result.accounts[0]).address;
+
+      const txHash = await sdk.request<string>({
+        chainId,
+        request: {
+          method: "eth_sendTransaction",
+          params: [{ from, to: tx.to, data: tx.data, value: tx.value || "0x0", gas: tx.gas }],
+        },
+      });
+
+      process.stdout.write(JSON.stringify({ transactionHash: txHash }));
+    }
   } finally {
     await sdk.destroy();
   }

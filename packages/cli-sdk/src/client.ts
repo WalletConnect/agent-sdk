@@ -28,6 +28,9 @@ const DEFAULT_METHODS = [
 
 const DEFAULT_EVENTS = ["chainChanged", "accountsChanged"];
 const DEFAULT_CHAINS = ["eip155:1"];
+
+const SOLANA_METHODS = ["solana_signTransaction", "solana_signMessage"];
+const SOLANA_EVENTS: string[] = [];
 const DEFAULT_STORAGE_PATH = join(homedir(), ".walletconnect-cli");
 
 export class WalletConnectCLI extends EventEmitter {
@@ -68,12 +71,7 @@ export class WalletConnectCLI extends EventEmitter {
 
     // Build namespaces
     const chains = this.options.chains || DEFAULT_CHAINS;
-    const methods = this.options.methods || DEFAULT_METHODS;
-    const events = this.options.events || DEFAULT_EVENTS;
-
-    const optionalNamespaces = connectOptions?.optionalNamespaces || {
-      eip155: { chains, methods, events },
-    };
+    const optionalNamespaces = connectOptions?.optionalNamespaces || this.buildNamespaces(chains);
 
     // Initiate connection
     const { uri, approval } = await client.connect({ optionalNamespaces });
@@ -285,6 +283,32 @@ export class WalletConnectCLI extends EventEmitter {
     });
 
     return this.signClient;
+  }
+
+  private buildNamespaces(chains: string[]): Record<string, { chains: string[]; methods: string[]; events: string[] }> {
+    const eipChains = chains.filter((c) => c.startsWith("eip155:"));
+    const solChains = chains.filter((c) => c.startsWith("solana:"));
+
+    const namespaces: Record<string, { chains: string[]; methods: string[]; events: string[] }> = {};
+
+    if (eipChains.length > 0 || solChains.length === 0) {
+      // Default to EVM if no Solana chains (backward compat)
+      namespaces.eip155 = {
+        chains: eipChains.length > 0 ? eipChains : DEFAULT_CHAINS,
+        methods: this.options.methods || DEFAULT_METHODS,
+        events: this.options.events || DEFAULT_EVENTS,
+      };
+    }
+
+    if (solChains.length > 0) {
+      namespaces.solana = {
+        chains: solChains,
+        methods: SOLANA_METHODS,
+        events: SOLANA_EVENTS,
+      };
+    }
+
+    return namespaces;
   }
 
   private async showBrowserUI(uri: string): Promise<void> {
