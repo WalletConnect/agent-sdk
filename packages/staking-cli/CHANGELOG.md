@@ -1,5 +1,12 @@
 # @walletconnect/staking-cli
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @walletconnect/cli-sdk@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes
