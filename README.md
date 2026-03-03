@@ -18,6 +18,7 @@ npx skills add WalletConnect/agent-sdk
 |---------|--------|-------------|
 | [`@walletconnect/cli-sdk`](packages/cli-sdk/) | `walletconnect` | Wallet connection and signing for terminal applications |
 | [`@walletconnect/staking-cli`](packages/staking-cli/) | `walletconnect-staking` | WCT staking on Optimism (stake, unstake, claim rewards) |
+| [`@walletconnect/pay-cli`](packages/pay-cli/) | `walletconnect-pay` | **Experimental** — WalletConnect Pay payments from the terminal |
 
 ## Quick Start
 
@@ -119,6 +120,67 @@ walletconnect-staking claim
 walletconnect-staking unstake
 ```
 
+## `walletconnect-pay` CLI (Experimental)
+
+> **Experimental** — This package is under active development. APIs, commands, and behavior may change significantly between releases. Not recommended for production use.
+
+Create and complete WalletConnect Pay payments from the terminal. Supports proxy mode (no API keys needed) and direct API mode.
+
+```
+Usage: walletconnect-pay <command> [options]
+
+Commands:
+  status <paymentId>     Check the status of a payment
+  create <amount>        Create a new payment (merchant credentials required)
+  checkout <paymentId>   Complete a payment using a connected wallet
+
+Options:
+  --staging              Use the staging API
+  --proxy                Proxy through frontend (no API keys needed)
+  --help                 Show this help message
+```
+
+### Authentication
+
+By default, the CLI proxies through the WalletConnect Pay frontend — no API keys needed. For direct API access, set environment variables:
+
+```bash
+# Required for direct API calls
+export WC_PAY_WALLET_API_KEY=<wallet-api-key>
+
+# Required for merchant operations (create)
+export WC_PAY_PARTNER_API_KEY=<partner-api-key>
+export WC_PAY_MERCHANT_ID=<merchant-id>
+```
+
+### Travel Rule compliance
+
+Some payments require Information Capture data. Provide via CLI flags or environment variables:
+
+```bash
+# Via CLI flags
+walletconnect-pay checkout <id> --name "John Doe" --dob "1990-01-15" --pob-country "US" --pob-address "New York, NY"
+
+# Or via environment variables
+export WC_PAY_NAME="John Doe"
+export WC_PAY_DOB="1990-01-15"
+export WC_PAY_POB_COUNTRY="US"
+export WC_PAY_POB_ADDRESS="New York, NY"
+```
+
+### Examples
+
+```bash
+# Check a payment's status
+walletconnect-pay status pay_abc123 --staging
+
+# Create a $10 payment (1000 = minor units / cents)
+walletconnect-pay create 1000 --staging
+
+# Complete a payment with a connected wallet
+walletconnect-pay checkout pay_abc123 --staging
+```
+
 ## Programmatic Usage
 
 ### `@walletconnect/cli-sdk`
@@ -168,12 +230,34 @@ import { stake, status, balance, fetchStaking, formatWCT } from "@walletconnect/
 
 The staking package exports transaction builders, formatting utilities, and API helpers for building custom staking integrations.
 
+### `@walletconnect/pay-cli` (Experimental)
+
+```typescript
+import { createPayClient, createFrontendPayClient } from "@walletconnect/pay-cli";
+
+// Direct API client
+const client = createPayClient({
+  walletApiKey: "your-wallet-api-key",
+  sdkVersion: "0.5.0",
+  staging: true,
+});
+
+// Or proxy through the frontend (no API keys needed)
+const proxyClient = createFrontendPayClient({
+  frontendUrl: "https://staging.pay.walletconnect.com",
+});
+
+const payment = await client.getPayment("pay_abc123");
+```
+
+> **Experimental** — The `@walletconnect/pay-cli` programmatic API is not yet stable.
+
 ## Development
 
 ```bash
 npm install
 npm run build          # Build all packages (via Turborepo)
-npm run test           # Run all tests (61 total)
+npm run test           # Run all tests
 npm run lint           # Lint all packages
 ```
 
