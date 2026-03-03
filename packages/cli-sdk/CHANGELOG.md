@@ -1,5 +1,11 @@
 # @walletconnect/cli-sdk
 
+## 0.5.1
+
+### Patch Changes
+
+- [#23](https://github.com/WalletConnect/agent-sdk/pull/23) [`b8204f8`](https://github.com/WalletConnect/agent-sdk/commit/b8204f86d77a7b05f3d1f7e55522c0172949ac74) Thanks [@arein](https://github.com/arein)! - Fix shorthand chain name resolution (`--chain solana`, `--chain evm`) in WalletConnect connect. Chain aliases now resolve to CAIP-2 identifiers before building session namespaces. Expanded `evm` alias to top 20 EVM networks.
+
 ## 0.5.0
 
 ### Minor Changes
