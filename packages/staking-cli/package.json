@@ -1,7 +1,7 @@
 {
   "name": "@walletconnect/staking-cli",
   "description": "WalletConnect WCT staking CLI — stake, unstake, claim rewards from the terminal",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": false,
   "author": "WalletConnect, Inc. <walletconnect.com>",
   "license": "SEE LICENSE IN LICENSE.md",
