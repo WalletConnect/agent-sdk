@@ -26,7 +26,7 @@ Commands:
 Options:
   --browser        Use browser UI instead of terminal QR code
   --json           Output as JSON (for whoami)
-  --chain <id>     Specify chain (e.g. eip155:10, solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp) for connect
+  --chain <id>     Specify chain (e.g. evm, solana, eip155:10) for connect
   --version        Show version number
   --help           Show this help message
 
