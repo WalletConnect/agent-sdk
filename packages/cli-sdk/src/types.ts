@@ -9,7 +9,7 @@ export interface WalletConnectCLIOptions {
   storagePath?: string;
   /** Connection UI mode. Default: 'terminal' */
   ui?: "terminal" | "browser";
-  /** CAIP-2 chain IDs to request. Default: ['eip155:1'] */
+  /** CAIP-2 chain IDs or shorthand names (e.g. 'ethereum', 'solana'). Default: ['eip155:1'] */
   chains?: string[];
   /** JSON-RPC methods to request. Default: common EVM signing methods */
   methods?: string[];

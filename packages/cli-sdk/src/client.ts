@@ -33,6 +33,33 @@ const SOLANA_METHODS = ["solana_signTransaction", "solana_signMessage"];
 const SOLANA_EVENTS: string[] = [];
 const DEFAULT_STORAGE_PATH = join(homedir(), ".walletconnect-cli");
 
+/** Shorthand chain names → CAIP-2 identifiers */
+const CHAIN_ALIASES: Record<string, string | string[]> = {
+  solana: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  evm: [
+    "eip155:1",       // Ethereum
+    "eip155:137",     // Polygon
+    "eip155:10",      // Optimism
+    "eip155:42161",   // Arbitrum One
+    "eip155:8453",    // Base
+    "eip155:56",      // BNB Chain
+    "eip155:43114",   // Avalanche C-Chain
+    "eip155:100",     // Gnosis
+    "eip155:250",     // Fantom
+    "eip155:324",     // zkSync Era
+    "eip155:59144",   // Linea
+    "eip155:534352",  // Scroll
+    "eip155:5000",    // Mantle
+    "eip155:81457",   // Blast
+    "eip155:7777777", // Zora
+    "eip155:1101",    // Polygon zkEVM
+    "eip155:42220",   // Celo
+    "eip155:1284",    // Moonbeam
+    "eip155:1285",    // Moonriver
+    "eip155:25",      // Cronos
+  ],
+};
+
 export class WalletConnectCLI extends EventEmitter {
   private readonly options: WalletConnectCLIOptions;
   private signClient: InstanceType<typeof SignClient> | null = null;
@@ -286,8 +313,10 @@ export class WalletConnectCLI extends EventEmitter {
   }
 
   private buildNamespaces(chains: string[]): Record<string, { chains: string[]; methods: string[]; events: string[] }> {
-    const eipChains = chains.filter((c) => c.startsWith("eip155:"));
-    const solChains = chains.filter((c) => c.startsWith("solana:"));
+    const resolved = chains.flatMap((c) => CHAIN_ALIASES[c.toLowerCase()] ?? c);
+
+    const eipChains = resolved.filter((c) => c.startsWith("eip155:"));
+    const solChains = resolved.filter((c) => c.startsWith("solana:"));
 
     const namespaces: Record<string, { chains: string[]; methods: string[]; events: string[] }> = {};
 
