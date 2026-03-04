@@ -16,6 +16,7 @@
     "turbo": "^2.8.0"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "samples/*"
   ]
 }
