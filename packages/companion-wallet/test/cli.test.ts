@@ -61,6 +61,7 @@ describe("cli", () => {
       expect(info.capabilities).toContain("send-transaction");
       expect(info.capabilities).toContain("balance");
       expect(info.capabilities).toContain("grant-session");
+      expect(info.capabilities).toContain("history");
       expect(info.chains).toContain("eip155:1");
       expect(info.chains).toContain("eip155:8453");
     });
@@ -188,6 +189,64 @@ describe("cli", () => {
 
       const { signedTransaction } = JSON.parse(signResult.stdout);
       expect(signedTransaction).toMatch(/^0x[0-9a-f]+$/);
+    });
+  });
+
+  describe("history", () => {
+    it("returns empty entries when no log exists", () => {
+      const { stdout, exitCode } = runCli("history");
+      expect(exitCode).toBe(0);
+
+      const output = JSON.parse(stdout);
+      expect(output.entries).toEqual([]);
+    });
+
+    it("logs operations and reads them back via history", () => {
+      // Run info to create an audit entry
+      runCli("info");
+
+      // Check history has the info entry
+      const { stdout, exitCode } = runCli("history");
+      expect(exitCode).toBe(0);
+
+      const { entries } = JSON.parse(stdout);
+      expect(entries.length).toBeGreaterThanOrEqual(1);
+      expect(entries.some((e: { operation: string }) => e.operation === "info")).toBe(true);
+    });
+
+    it("does not log history itself", () => {
+      // Run info then history
+      runCli("info");
+      runCli("history");
+
+      // Check history — should only contain info, not history
+      const { stdout } = runCli("history");
+      const { entries } = JSON.parse(stdout);
+      const historyEntries = entries.filter(
+        (e: { operation: string }) => e.operation === "history",
+      );
+      expect(historyEntries).toHaveLength(0);
+    });
+
+    it("filters by --operation", () => {
+      runCli("info");
+      runCli("generate");
+
+      const { stdout } = runCli("history", undefined, ["--operation", "info"]);
+      const { entries } = JSON.parse(stdout);
+      expect(entries.length).toBeGreaterThanOrEqual(1);
+      expect(entries.every((e: { operation: string }) => e.operation === "info")).toBe(true);
+    });
+
+    it("filters by --last", () => {
+      runCli("info");
+      runCli("generate");
+      runCli("accounts");
+
+      const { stdout } = runCli("history", undefined, ["--last", "1"]);
+      const { entries } = JSON.parse(stdout);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].operation).toBe("accounts");
     });
   });
 

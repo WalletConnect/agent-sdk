@@ -16,6 +16,7 @@ import {
   recordSessionUsage,
   SessionError,
 } from "./sessions.js";
+import { appendAuditEntry, readAuditLog } from "./audit.js";
 import {
   ExitCode,
   type Operation,
@@ -30,6 +31,7 @@ import {
   type RevokeSessionInput,
   type GetSessionInput,
   type ErrorResponse,
+  type HistoryInput,
 } from "./types.js";
 
 function getVersion(): string {
@@ -44,23 +46,48 @@ function getVersion(): string {
   }
 }
 
+let _stdinCache: string | undefined;
+
 async function readStdin(): Promise<string> {
-  if (process.stdin.isTTY) return "";
+  if (_stdinCache !== undefined) return _stdinCache;
+
+  if (process.stdin.isTTY) {
+    _stdinCache = "";
+    return _stdinCache;
+  }
 
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
     chunks.push(chunk);
   }
-  return Buffer.concat(chunks).toString("utf-8").trim();
+  _stdinCache = Buffer.concat(chunks).toString("utf-8").trim();
+  return _stdinCache;
 }
 
-function respond(data: object): void {
+let respond = (data: object): void => {
   process.stdout.write(JSON.stringify(data) + "\n");
-}
+};
 
-function respondError(error: string, code: string): void {
+let respondError = (error: string, code: string): void => {
   const resp: ErrorResponse = { error, code };
   process.stdout.write(JSON.stringify(resp) + "\n");
+};
+
+/** Fields that must never appear in audit logs */
+const REDACTED_FIELDS = new Set(["mnemonic", "signedTransaction", "signature"]);
+
+function sanitizeAuditData(data: unknown): unknown {
+  if (!data || typeof data !== "object") return data;
+  const obj = data as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (REDACTED_FIELDS.has(key)) {
+      sanitized[key] = "[REDACTED]";
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
 }
 
 async function parseInput<T>(): Promise<T | null> {
@@ -91,6 +118,7 @@ async function handleInfo(): Promise<void> {
       "get-session",
       "fund",
       "drain",
+      "history",
     ],
     chains: SUPPORTED_CHAINS,
   };
@@ -387,6 +415,27 @@ async function handleDrain(): Promise<void> {
   }
 }
 
+async function handleHistory(): Promise<void> {
+  try {
+    const lastRaw = parseCliArg("last");
+    const filters: HistoryInput = {
+      operation: parseCliArg("operation"),
+      chain: parseCliArg("chain"),
+      account: parseCliArg("account"),
+      last: lastRaw ? Number(lastRaw) : undefined,
+      since: parseCliArg("since"),
+    };
+    const entries = readAuditLog(filters);
+    respond({ entries });
+  } catch (err) {
+    respondError(
+      err instanceof Error ? err.message : "History read failed",
+      "HISTORY_ERROR",
+    );
+    process.exit(ExitCode.ERROR);
+  }
+}
+
 function validateSessionOrExit(
   sessionId: string,
   operation: string,
@@ -421,6 +470,7 @@ const HANDLERS: Record<Operation, () => Promise<void>> = {
   "get-session": handleGetSession,
   fund: handleFund,
   drain: handleDrain,
+  history: handleHistory,
 };
 
 async function main(): Promise<void> {
@@ -432,6 +482,60 @@ async function main(): Promise<void> {
       "UNSUPPORTED_OPERATION",
     );
     process.exit(ExitCode.UNSUPPORTED);
+  }
+
+  // Eagerly read stdin so it's cached for both audit and handler
+  const rawStdin = await readStdin();
+
+  // Audit context — captured during execution, written on exit
+  const shouldAudit = operation !== "history";
+  let auditOutput: unknown = undefined;
+  let auditError: string | undefined = undefined;
+
+  if (shouldAudit) {
+    const origRespond = respond;
+    const origRespondError = respondError;
+
+    respond = (data: object): void => {
+      auditOutput = data;
+      origRespond(data);
+    };
+
+    respondError = (error: string, code: string): void => {
+      auditError = error;
+      auditOutput = { error, code };
+      origRespondError(error, code);
+    };
+
+    process.on("exit", () => {
+      let parsedInput: unknown = undefined;
+      try {
+        parsedInput = rawStdin ? JSON.parse(rawStdin) : undefined;
+      } catch {
+        parsedInput = rawStdin || undefined;
+      }
+
+      const inputObj =
+        parsedInput && typeof parsedInput === "object" && parsedInput !== null
+          ? (parsedInput as Record<string, unknown>)
+          : undefined;
+
+      // Sanitize sensitive fields from audit entries
+      const sanitizedInput = sanitizeAuditData(parsedInput);
+      const sanitizedOutput = sanitizeAuditData(auditOutput);
+
+      appendAuditEntry({
+        timestamp: new Date().toISOString(),
+        operation,
+        input: sanitizedInput,
+        output: sanitizedOutput,
+        account: parseCliArg("account") ?? (typeof inputObj?.account === "string" ? inputObj.account : undefined),
+        chain: parseCliArg("chain") ?? (typeof inputObj?.chain === "string" ? inputObj.chain : undefined),
+        sessionId: typeof inputObj?.sessionId === "string" ? inputObj.sessionId : undefined,
+        success: auditError === undefined,
+        error: auditError,
+      });
+    });
   }
 
   try {

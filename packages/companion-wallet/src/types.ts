@@ -25,7 +25,8 @@ export type Operation =
   | "get-session"
   | "balance"
   | "fund"
-  | "drain";
+  | "drain"
+  | "history";
 
 /** Info response */
 export interface InfoResponse {
@@ -180,4 +181,26 @@ export interface WalletFile {
   version: 2;
   address: string;
   mnemonic: string;
+}
+
+/** Audit log entry */
+export interface AuditEntry {
+  timestamp: string;
+  operation: string;
+  input: unknown;
+  output: unknown;
+  account?: string;
+  chain?: string;
+  sessionId?: string;
+  success: boolean;
+  error?: string;
+}
+
+/** History query input (CLI flags) */
+export interface HistoryInput {
+  operation?: string;
+  chain?: string;
+  account?: string;
+  last?: number;
+  since?: string;
 }
