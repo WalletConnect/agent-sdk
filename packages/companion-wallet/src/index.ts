@@ -17,6 +17,7 @@ export {
   recordSessionUsage,
   SessionError,
 } from "./sessions.js";
+export { appendAuditEntry, readAuditLog } from "./audit.js";
 export { ExitCode } from "./types.js";
 export type {
   Operation,
@@ -43,4 +44,6 @@ export type {
   BalanceResponse,
   WalletFile,
   ErrorResponse,
+  AuditEntry,
+  HistoryInput,
 } from "./types.js";
