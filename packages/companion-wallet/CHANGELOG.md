@@ -1,5 +1,16 @@
 # @walletconnect/companion-wallet
 
+## 0.7.0
+
+### Minor Changes
+
+- [#27](https://github.com/WalletConnect/agent-sdk/pull/27) [`b596c82`](https://github.com/WalletConnect/agent-sdk/commit/b596c82cb0feeda02aa6dcf5bbe8ea6a46c16ea5) Thanks [@arein](https://github.com/arein)! - Add audit log and history operation for companion wallet
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @walletconnect/cli-sdk@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes

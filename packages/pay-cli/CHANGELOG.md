@@ -1,5 +1,12 @@
 # @walletconnect/pay-cli
 
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @walletconnect/cli-sdk@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes
