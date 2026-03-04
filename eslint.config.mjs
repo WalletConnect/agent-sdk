@@ -9,7 +9,7 @@ export default [
   },
   eslint.configs.recommended,
   {
-    files: ["packages/*/src/**/*.ts"],
+    files: ["packages/*/src/**/*.ts", "samples/*/src/**/*.ts"],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 2020,

@@ -1,0 +1,32 @@
+{
+  "name": "@agent-sdk/x402-browser-proxy",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MITM proxy that intercepts HTTP 402 responses and auto-signs x402 payments via CWP",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "x402-browser-proxy": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@walletconnect/cli-sdk": "*",
+    "@x402/evm": "^2.2.0",
+    "@x402/core": "^2.2.0",
+    "commander": "^12.1.0",
+    "http-mitm-proxy": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
