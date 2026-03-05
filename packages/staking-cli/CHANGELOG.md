@@ -1,5 +1,14 @@
 # @walletconnect/staking-cli
 
+## 0.8.1
+
+### Patch Changes
+
+- [#34](https://github.com/WalletConnect/agent-sdk/pull/34) [`6c8ed5f`](https://github.com/WalletConnect/agent-sdk/commit/6c8ed5f4602b40246860264cdc532e214da55f42) Thanks [@arein](https://github.com/arein)! - Fix balance display rounding up, causing full-balance stake to revert. `formatWCT` now truncates to 2 decimal places instead of rounding. `stake` checks on-chain balance before approving to avoid wasting gas.
+
+- Updated dependencies []:
+  - @walletconnect/cli-sdk@0.8.1
+
 ## 0.8.0
 
 ### Patch Changes
