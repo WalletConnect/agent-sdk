@@ -7,10 +7,17 @@ import {
   MAX_LOCK_WEEKS,
 } from "./constants.js";
 
-/** Format a bigint WCT amount as a human-readable string with 2 decimals */
+/** Format a bigint WCT amount as a human-readable string with 2 decimals (truncated, never rounded up) */
 export function formatWCT(amount: bigint): string {
   const raw = formatUnits(amount, WCT_DECIMALS);
-  const num = parseFloat(raw);
+  // Truncate to 2 decimal places instead of rounding to avoid displaying
+  // a value larger than the actual on-chain balance
+  const dotIndex = raw.indexOf(".");
+  const truncated =
+    dotIndex === -1
+      ? `${raw}.00`
+      : raw.slice(0, dotIndex + 3).padEnd(dotIndex + 3, "0");
+  const num = parseFloat(truncated);
   return num.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

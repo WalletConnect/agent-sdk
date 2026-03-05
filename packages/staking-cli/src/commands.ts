@@ -62,6 +62,16 @@ export async function stake(
 
   console.log(`\nAdding ${amount} WCT${extendingTime ? `, extending lock to ${formatDate(Number(effectiveUnlockTime))}` : ""}...`);
 
+  // Check balance before approving to avoid wasting gas on a doomed stake
+  const bal = await readUint256(buildBalanceOfCallData(address));
+  if (bal < amountWei) {
+    console.error(
+      `\nInsufficient balance: you have ${formatWCT(bal)} WCT but tried to stake ${amount} WCT.` +
+      `\nUse the displayed balance (or less) to avoid a reverted transaction.`,
+    );
+    return;
+  }
+
   // Check allowance and approve if needed
   const allowance = await readUint256(buildAllowanceCallData(address, STAKE_WEIGHT_ADDRESS));
   if (allowance < amountWei) {
