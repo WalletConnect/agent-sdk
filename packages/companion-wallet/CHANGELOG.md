@@ -1,5 +1,23 @@
 # @walletconnect/companion-wallet
 
+## 0.8.0
+
+### Minor Changes
+
+- [#30](https://github.com/WalletConnect/agent-sdk/pull/30) [`7cc1cbe`](https://github.com/WalletConnect/agent-sdk/commit/7cc1cbe9b51ce5d94e81b632d1834d11e9c5c5ce) Thanks [@arein](https://github.com/arein)! - feat: add swidge (swap/bridge) functionality via LI.FI SDK
+
+  Companion wallet now auto-detects insufficient funds before sending transactions
+  and seamlessly bridges from another chain using LI.FI. In TTY mode, prompts for
+  confirmation. In pipe/agent mode, auto-bridges.
+
+  New CLI operation: `companion-wallet swidge` for manual cross-chain bridging.
+  WalletConnect CLI now warns when target account has insufficient funds.
+
+### Patch Changes
+
+- Updated dependencies [[`79de3fe`](https://github.com/WalletConnect/agent-sdk/commit/79de3fe42f7678e895f17a72cb8b91e80a738397), [`7cc1cbe`](https://github.com/WalletConnect/agent-sdk/commit/7cc1cbe9b51ce5d94e81b632d1834d11e9c5c5ce)]:
+  - @walletconnect/cli-sdk@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
