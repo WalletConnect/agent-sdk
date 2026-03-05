@@ -228,6 +228,9 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
       // EVM: existing eth_sendTransaction flow
       const from = tx.from || parseAccount(result.accounts[0]).address;
 
+      // Pre-flight balance check — non-blocking warning
+      const balanceWarning = warnIfInsufficientBalance(chainId, from, tx.value);
+
       const txHash = await sdk.request<string>({
         chainId,
         request: {
@@ -236,10 +239,54 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
         },
       });
 
+      await balanceWarning;
       process.stdout.write(JSON.stringify({ transactionHash: txHash }));
     }
   } finally {
     await sdk.destroy();
+  }
+}
+
+const EVM_RPC_URLS: Record<string, string> = {
+  "eip155:1": "https://eth.drpc.org",
+  "eip155:8453": "https://mainnet.base.org",
+  "eip155:10": "https://mainnet.optimism.io",
+};
+
+async function checkBalanceRpc(rpcUrl: string, address: string): Promise<bigint> {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_getBalance",
+      params: [address, "latest"],
+    }),
+  });
+  const json = (await res.json()) as { result: string };
+  return BigInt(json.result);
+}
+
+async function warnIfInsufficientBalance(
+  chainId: string,
+  address: string,
+  txValue: string | undefined,
+): Promise<void> {
+  const rpcUrl = EVM_RPC_URLS[chainId];
+  if (!rpcUrl || !txValue) return;
+
+  try {
+    const balance = await checkBalanceRpc(rpcUrl, address);
+    const value = BigInt(txValue);
+    if (balance < value) {
+      process.stderr.write(
+        `\nWarning: Wallet may have insufficient balance on ${chainId}.\n` +
+          `   Consider: companion-wallet swidge --to-chain ${chainId} --to-token eth --amount <needed>\n\n`,
+      );
+    }
+  } catch {
+    // Silently ignore balance check failures
   }
 }
 

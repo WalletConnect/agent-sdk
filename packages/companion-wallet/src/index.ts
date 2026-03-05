@@ -2,9 +2,11 @@ export { generateAndStore, loadKey, loadMnemonic, listAddresses, resolveAccount,
 export { signMessage, signTypedData, signTransaction, normalizeTransaction } from "./signer.js";
 export { sendTransaction, getBalance, getTokenBalance, getBalances } from "./rpc.js";
 export { resolveChain, getTransport, parseChainId, getChainName, SUPPORTED_CHAINS } from "./chains.js";
-export { getToken, getTokenSymbols, parseTokenAmount, buildErc20Transfer } from "./tokens.js";
+export { getToken, getTokenSymbols, parseTokenAmount, buildErc20Transfer, getLifiTokenAddress, findTokenSymbolByAddress } from "./tokens.js";
 export type { TokenInfo } from "./tokens.js";
-export { selectChain, selectToken, inputAmount, inputAddress } from "./prompt.js";
+export { resolveChainByNumericId } from "./chains.js";
+export { swidge, swidgeIfNeeded } from "./swidge.js";
+export { ask, selectChain, selectToken, inputAmount, inputAddress } from "./prompt.js";
 export { fund } from "./fund.js";
 export type { FundOptions, FundResult } from "./fund.js";
 export { drain } from "./drain.js";
@@ -46,4 +48,8 @@ export type {
   ErrorResponse,
   AuditEntry,
   HistoryInput,
+  SwidgeOptions,
+  SwidgeResult,
+  BridgeResult,
+  SwidgeInput,
 } from "./types.js";

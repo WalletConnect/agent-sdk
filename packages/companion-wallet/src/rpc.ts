@@ -76,6 +76,7 @@ export async function getBalances(
 
 /**
  * Send a transaction: estimate gas, set nonce, sign, and broadcast.
+ * Automatically checks balance and bridges from another chain if needed.
  * Returns the transaction hash.
  */
 export async function sendTransaction(
@@ -83,9 +84,35 @@ export async function sendTransaction(
   transaction: Record<string, unknown>,
   caip2Chain: string,
 ): Promise<Hex> {
+  const account = privateKeyToAccount(privateKey);
+
+  // Check balance and bridge if needed (dynamic import to avoid circular dep)
+  try {
+    const { swidgeIfNeeded } = await import("./swidge.js");
+    const swidgeResult = await swidgeIfNeeded(
+      privateKey,
+      account.address,
+      transaction,
+      caip2Chain,
+    );
+    if (swidgeResult.bridged && swidgeResult.bridgeResult) {
+      const br = swidgeResult.bridgeResult;
+      process.stderr.write(
+        `\nSwidged: ${br.fromAmount} ${br.fromToken} (${br.fromChain}) -> ` +
+          `${br.toAmount} ${br.toToken} (${br.toChain})\n\n`,
+      );
+    }
+  } catch (err) {
+    // Swidge check is best-effort; log and proceed with transaction
+    if (err instanceof Error && !err.message.includes("Cannot find module")) {
+      process.stderr.write(
+        `Swidge check skipped: ${err.message}\n`,
+      );
+    }
+  }
+
   const chain = resolveChain(caip2Chain);
   const transport = getTransport(caip2Chain);
-  const account = privateKeyToAccount(privateKey);
 
   const publicClient = createPublicClient({ chain, transport });
   const walletClient = createWalletClient({ account, chain, transport });

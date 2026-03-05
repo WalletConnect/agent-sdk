@@ -1,10 +1,14 @@
-import { createInterface } from "node:readline/promises";
+import { createInterface, type Interface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
+import type { Writable } from "node:stream";
 import { SUPPORTED_CHAINS, getChainName } from "./chains.js";
 import { getTokenSymbols } from "./tokens.js";
 
-async function ask(question: string): Promise<string> {
-  const rl = createInterface({ input: stdin, output: stdout });
+export async function ask(
+  question: string,
+  output: Writable = stdout,
+): Promise<string> {
+  const rl: Interface = createInterface({ input: stdin, output });
   try {
     const answer = await rl.question(question);
     return answer.trim();
