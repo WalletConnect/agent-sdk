@@ -1,7 +1,7 @@
 {
   "name": "@walletconnect/pay-cli",
   "description": "WalletConnect Pay CLI — create and complete payments from the terminal",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": false,
   "author": "WalletConnect, Inc. <walletconnect.com>",
   "license": "SEE LICENSE IN LICENSE.md",
