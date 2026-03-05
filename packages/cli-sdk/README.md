@@ -1,6 +1,6 @@
-# @walletconnect/cli-sdk
+# 🔑 @walletconnect/cli-sdk
 
-Wallet connection and transaction signing for CLI applications, powered by the WalletConnect protocol.
+Wallet connection, transaction signing, and cross-chain bridging for CLI applications, powered by the WalletConnect protocol and [LI.FI](https://li.fi).
 
 ## Quick Start
 
@@ -129,3 +129,21 @@ Returns the raw session object.
 ### `wc.destroy(): Promise<void>`
 
 Cleans up all resources (browser server, listeners, client references).
+
+## 🔀 Swidge (Cross-Chain Bridge/Swap)
+
+The `walletconnect` CLI includes a `swidge` command for bridging and swapping tokens across EVM chains via [LI.FI](https://li.fi). Zero additional dependencies — all external calls use `fetch()`.
+
+```bash
+# Bridge WCT from Optimism to Ethereum mainnet
+walletconnect swidge --from-chain eip155:10 --to-chain eip155:1 \
+  --from-token WCT --to-token WCT --amount 5
+
+# Swap USDC on Base to ETH on Optimism
+walletconnect swidge --from-chain eip155:8453 --to-chain eip155:10 \
+  --from-token USDC --to-token ETH --amount 10
+```
+
+### Auto-bridge in `send-transaction`
+
+When sending a transaction, the CLI checks if the wallet has sufficient ETH. If not, it automatically bridges from another chain (prompts in TTY, auto-bridges in pipe mode).

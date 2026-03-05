@@ -1,10 +1,10 @@
-# WalletConnect Agent SDK
+# 🔗 WalletConnect Agent SDK
 
 > **Beta (v0.1.x)** — This project is under active development. APIs and CLI interfaces may change between releases. Not yet recommended for production use.
 
-Monorepo for WalletConnect agent tooling — CLI tools and libraries for wallet connection, message signing, and WCT staking from the terminal.
+Monorepo for WalletConnect agent tooling — CLI tools and libraries for wallet connection, message signing, cross-chain bridging, and WCT staking from the terminal.
 
-### Agent Skills
+### 🤖 Agent Skills
 
 Install the accompanying Claude Code / agent skills:
 
@@ -12,15 +12,15 @@ Install the accompanying Claude Code / agent skills:
 npx skills add WalletConnect/agent-sdk
 ```
 
-## Packages
+## 📦 Packages
 
 | Package | Binary | Description |
 |---------|--------|-------------|
-| [`@walletconnect/cli-sdk`](packages/cli-sdk/) | `walletconnect` | Wallet connection and signing for terminal applications |
-| [`@walletconnect/staking-cli`](packages/staking-cli/) | `walletconnect-staking` | WCT staking on Optimism (stake, unstake, claim rewards) |
-| [`@walletconnect/pay-cli`](packages/pay-cli/) | `walletconnect-pay` | **Experimental** — WalletConnect Pay payments from the terminal |
+| [`@walletconnect/cli-sdk`](packages/cli-sdk/) | `walletconnect` | 🔑 Wallet connection, signing, and cross-chain swidge for terminal apps |
+| [`@walletconnect/staking-cli`](packages/staking-cli/) | `walletconnect-staking` | 📈 WCT staking on Optimism (stake, unstake, claim rewards) |
+| [`@walletconnect/pay-cli`](packages/pay-cli/) | `walletconnect-pay` | 💳 **Experimental** — WalletConnect Pay payments from the terminal |
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Install globally
 
@@ -42,27 +42,33 @@ Or set the environment variable:
 export WALLETCONNECT_PROJECT_ID=<your-project-id>
 ```
 
-## `walletconnect` CLI
+## 🔑 `walletconnect` CLI
 
-Connect a wallet, sign messages, and manage sessions.
+Connect a wallet, sign messages, send transactions, and bridge tokens across chains.
 
 ```
 Usage: walletconnect <command> [options]
 
 Commands:
-  connect              Connect to a wallet via QR code
-  whoami               Show current session info
-  sign <message>       Sign a message with the connected wallet
-  disconnect           Disconnect the current session
-  config set <k> <v>   Set a config value (e.g. project-id)
-  config get <k>       Get a config value
+  connect                       Connect to a wallet via QR code
+  whoami                        Show current session info
+  sign <message>                Sign a message with the connected wallet
+  sign-typed-data <json>        Sign EIP-712 typed data (JSON string)
+  send-transaction <json>       Send a transaction (EVM or Solana)
+  swidge                        Bridge/swap tokens across chains via LI.FI
+  disconnect                    Disconnect the current session
+  config set <k> <v>            Set a config value (e.g. project-id)
+  config get <k>                Get a config value
 
 Options:
   --browser            Use browser UI instead of terminal QR code
+  --json               Output as JSON (for whoami)
+  --chain <id>         Specify chain (e.g. evm, solana, eip155:10) for connect
+  --version            Show version number
   --help               Show this help message
 ```
 
-### Examples
+### 💬 Examples
 
 ```bash
 # Connect a wallet (shows QR code in terminal)
@@ -77,11 +83,52 @@ walletconnect sign "Hello from the terminal"
 # Check connected wallet
 walletconnect whoami
 
+# Send a transaction on Optimism
+walletconnect send-transaction '{"to":"0x...","value":"0x0","chainId":"eip155:10"}'
+
 # Disconnect
 walletconnect disconnect
 ```
 
-## `walletconnect-staking` CLI
+## 🔀 Swidge (Cross-Chain Bridge/Swap)
+
+Bridge or swap tokens across EVM chains, powered by [LI.FI](https://li.fi). The connected wallet approves and executes each transaction.
+
+```
+Swidge options:
+  --from-chain <id>    Source chain (e.g. eip155:8453)
+  --to-chain <id>      Destination chain (e.g. eip155:10)
+  --from-token <sym>   Source token symbol (e.g. ETH, USDC)
+  --to-token <sym>     Destination token symbol (e.g. ETH, WCT)
+  --amount <n>         Amount to bridge (human-readable)
+```
+
+### 🌉 Swidge examples
+
+```bash
+# Bridge 5 WCT from Optimism to Ethereum mainnet
+walletconnect swidge --from-chain eip155:10 --to-chain eip155:1 \
+  --from-token WCT --to-token WCT --amount 5
+
+# Swap USDC on Base to ETH on Optimism
+walletconnect swidge --from-chain eip155:8453 --to-chain eip155:10 \
+  --from-token USDC --to-token ETH --amount 10
+
+# Bridge ETH from Ethereum to Base
+walletconnect swidge --from-chain eip155:1 --to-chain eip155:8453 \
+  --amount 0.01
+```
+
+### ⚡ Auto-bridge in `send-transaction`
+
+When sending a transaction, the CLI automatically checks if the connected wallet has sufficient ETH on the target chain. If funds are insufficient:
+
+- **Interactive (TTY)**: Prompts you to bridge from another chain
+- **Pipe/agent mode**: Auto-bridges from the chain with the most funds
+
+This means agents can seamlessly execute transactions across chains without worrying about which chain has funds.
+
+## 📈 `walletconnect-staking` CLI
 
 Stake WCT tokens on Optimism, check staking positions, and claim rewards.
 
@@ -101,7 +148,7 @@ Options:
   --help                   Show this help message
 ```
 
-### Examples
+### 💰 Examples
 
 ```bash
 # Stake 1000 WCT for 52 weeks
@@ -120,9 +167,9 @@ walletconnect-staking claim
 walletconnect-staking unstake
 ```
 
-## `walletconnect-pay` CLI (Experimental)
+## 💳 `walletconnect-pay` CLI (Experimental)
 
-> **Experimental** — This package is under active development. APIs, commands, and behavior may change significantly between releases. Not recommended for production use.
+> **⚠️ Experimental** — This package is under active development. APIs, commands, and behavior may change significantly between releases.
 
 Create and complete WalletConnect Pay payments from the terminal. Supports proxy mode (no API keys needed) and direct API mode.
 
@@ -140,7 +187,7 @@ Options:
   --help                 Show this help message
 ```
 
-### Authentication
+### 🔐 Authentication
 
 By default, the CLI proxies through the WalletConnect Pay frontend — no API keys needed. For direct API access, set environment variables:
 
@@ -153,13 +200,14 @@ export WC_PAY_PARTNER_API_KEY=<partner-api-key>
 export WC_PAY_MERCHANT_ID=<merchant-id>
 ```
 
-### Travel Rule compliance
+### 🛂 Travel Rule compliance
 
 Some payments require Information Capture data. Provide via CLI flags or environment variables:
 
 ```bash
 # Via CLI flags
-walletconnect-pay checkout <id> --name "John Doe" --dob "1990-01-15" --pob-country "US" --pob-address "New York, NY"
+walletconnect-pay checkout <id> --name "John Doe" --dob "1990-01-15" \
+  --pob-country "US" --pob-address "New York, NY"
 
 # Or via environment variables
 export WC_PAY_NAME="John Doe"
@@ -168,7 +216,7 @@ export WC_PAY_POB_COUNTRY="US"
 export WC_PAY_POB_ADDRESS="New York, NY"
 ```
 
-### Examples
+### 💳 Examples
 
 ```bash
 # Check a payment's status
@@ -181,7 +229,7 @@ walletconnect-pay create 1000 --staging
 walletconnect-pay checkout pay_abc123 --staging
 ```
 
-## Programmatic Usage
+## 🧑‍💻 Programmatic Usage
 
 ### `@walletconnect/cli-sdk`
 
@@ -250,9 +298,9 @@ const proxyClient = createFrontendPayClient({
 const payment = await client.getPayment("pay_abc123");
 ```
 
-> **Experimental** — The `@walletconnect/pay-cli` programmatic API is not yet stable.
+> **⚠️ Experimental** — The `@walletconnect/pay-cli` programmatic API is not yet stable.
 
-## Development
+## 🛠️ Development
 
 ```bash
 npm install
@@ -261,7 +309,7 @@ npm run test           # Run all tests
 npm run lint           # Lint all packages
 ```
 
-### Contributing
+### 📝 Contributing
 
 Every PR that changes package behavior must include a **changeset**:
 
@@ -271,6 +319,6 @@ npm run changeset      # Interactive — select packages, bump type, description
 
 This creates a `.changeset/<name>.md` file. Commit it with your PR. On merge, the [changesets action](https://github.com/changesets/changesets/tree/main/packages/action) opens a version PR, and merging that publishes to npm.
 
-## License
+## 📄 License
 
 [WalletConnect Community License](LICENSE.md)

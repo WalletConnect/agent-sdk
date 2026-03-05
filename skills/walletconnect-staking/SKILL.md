@@ -21,6 +21,7 @@ Operate the `walletconnect-staking` CLI to stake/unstake WCT tokens, claim staki
 ## When not to use
 
 - User wants basic wallet connection without staking (use `walletconnect` skill)
+- User wants to bridge or swap tokens across chains (use `walletconnect` skill — the `swidge` command)
 - User is working on the staking-cli source code (just edit normally)
 - User wants to interact with WCT on a chain other than Optimism
 
