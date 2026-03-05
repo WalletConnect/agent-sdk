@@ -4,11 +4,13 @@
 
 ```
 packages/
-  cli-sdk/       → @walletconnect/cli-sdk (wallet connection + signing for CLI apps)
-  staking-cli/   → @walletconnect/staking-cli (WCT staking CLI, depends on cli-sdk)
+  cli-sdk/             → @walletconnect/cli-sdk (wallet connection, signing, and cross-chain swidge for CLI apps)
+  companion-wallet/    → @walletconnect/companion-wallet (self-custody wallet with auto-bridging via LI.FI)
+  staking-cli/         → @walletconnect/staking-cli (WCT staking CLI, depends on cli-sdk)
+  pay-cli/             → @walletconnect/pay-cli (WalletConnect Pay CLI, experimental)
 ```
 
-Both packages are ESM (`"type": "module"`), built with **tsup**, tested with **vitest**, linted with **ESLint v9** (flat config at root `eslint.config.mjs`).
+All packages are ESM (`"type": "module"`), built with **tsup**, tested with **vitest**, linted with **ESLint v9** (flat config at root `eslint.config.mjs`).
 
 **Turborepo** orchestrates build/test/lint. Build order: `cli-sdk` first (staking-cli depends on it).
 
@@ -70,7 +72,7 @@ Both packages always version together (fixed group). A changeset touching either
 
 Tests live in `packages/*/test/`. Both packages use vitest with `--reporter=verbose`.
 
-- **cli-sdk**: 41 tests (client, helpers, session, terminal-ui, browser-ui)
+- **cli-sdk**: 58 tests (client, helpers, session, terminal-ui, browser-ui, swidge)
 - **staking-cli**: 20 tests (contracts, format utilities)
 
 Mocks for WalletConnect SignClient are in `packages/cli-sdk/test/mocks/sign-client.ts`.
