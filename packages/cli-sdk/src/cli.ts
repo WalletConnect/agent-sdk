@@ -1,5 +1,6 @@
 import { WalletConnectCLI } from "./client.js";
 import { resolveProjectId, setConfigValue, getConfigValue } from "./config.js";
+import { trySwidgeBeforeSend, swidgeViaWalletConnect } from "./swidge.js";
 
 declare const __VERSION__: string;
 
@@ -19,9 +20,17 @@ Commands:
   sign <message>                Sign a message with the connected wallet
   sign-typed-data <json>        Sign EIP-712 typed data (JSON string)
   send-transaction <json>       Send a transaction (EVM: to, data, value, gas; Solana: transaction, chainId)
+  swidge                        Bridge/swap tokens across chains via LI.FI
   disconnect                    Disconnect the current session
   config set <k> <v>            Set a config value (e.g. project-id)
   config get <k>                Get a config value
+
+Swidge options:
+  --from-chain <id>    Source chain (e.g. eip155:8453)
+  --to-chain <id>      Destination chain (e.g. eip155:10)
+  --from-token <sym>   Source token symbol (e.g. ETH, USDC)
+  --to-token <sym>     Destination token symbol (e.g. ETH, WCT)
+  --amount <n>         Amount to bridge (human-readable)
 
 Options:
   --browser        Use browser UI instead of terminal QR code
@@ -228,8 +237,14 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
       // EVM: existing eth_sendTransaction flow
       const from = tx.from || parseAccount(result.accounts[0]).address;
 
-      // Pre-flight balance check — non-blocking warning
-      const balanceWarning = warnIfInsufficientBalance(chainId, from, tx.value);
+      // Pre-flight balance check — bridge if needed
+      const swidgeResult = await trySwidgeBeforeSend(sdk, chainId, from, tx.value);
+      if (swidgeResult) {
+        process.stderr.write(
+          `Bridged: ${swidgeResult.fromAmount} ${swidgeResult.fromToken} (${swidgeResult.fromChain}) -> ` +
+          `${swidgeResult.toAmount} ${swidgeResult.toToken} (${swidgeResult.toChain})\n`,
+        );
+      }
 
       const txHash = await sdk.request<string>({
         chainId,
@@ -239,7 +254,6 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
         },
       });
 
-      await balanceWarning;
       process.stdout.write(JSON.stringify({ transactionHash: txHash }));
     }
   } finally {
@@ -247,46 +261,55 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
   }
 }
 
-const EVM_RPC_URLS: Record<string, string> = {
-  "eip155:1": "https://eth.drpc.org",
-  "eip155:8453": "https://mainnet.base.org",
-  "eip155:10": "https://mainnet.optimism.io",
-};
+async function cmdSwidge(browser: boolean, args: string[]): Promise<void> {
+  const projectId = getProjectId();
 
-async function checkBalanceRpc(rpcUrl: string, address: string): Promise<bigint> {
-  const res = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_getBalance",
-      params: [address, "latest"],
-    }),
-  });
-  const json = (await res.json()) as { result: string };
-  return BigInt(json.result);
-}
+  // Parse swidge-specific flags
+  let fromChain = "";
+  let toChain = "";
+  let fromToken = "ETH";
+  let toToken = "ETH";
+  let amount = "";
 
-async function warnIfInsufficientBalance(
-  chainId: string,
-  address: string,
-  txValue: string | undefined,
-): Promise<void> {
-  const rpcUrl = EVM_RPC_URLS[chainId];
-  if (!rpcUrl || !txValue) return;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === "--from-chain" && next) { fromChain = next; i++; }
+    else if (arg === "--to-chain" && next) { toChain = next; i++; }
+    else if (arg === "--from-token" && next) { fromToken = next; i++; }
+    else if (arg === "--to-token" && next) { toToken = next; i++; }
+    else if (arg === "--amount" && next) { amount = next; i++; }
+  }
+
+  if (!fromChain || !toChain || !amount) {
+    console.error("Usage: walletconnect swidge --from-chain <id> --to-chain <id> --amount <n> [--from-token <sym>] [--to-token <sym>]");
+    process.exit(1);
+  }
+
+  const chains = [fromChain];
+  if (!chains.includes(toChain)) chains.push(toChain);
+  const sdk = createSDK({ projectId, browser, chains });
 
   try {
-    const balance = await checkBalanceRpc(rpcUrl, address);
-    const value = BigInt(txValue);
-    if (balance < value) {
-      process.stderr.write(
-        `\nWarning: Wallet may have insufficient balance on ${chainId}.\n` +
-          `   Consider: companion-wallet swidge --to-chain ${chainId} --to-token eth --amount <needed>\n\n`,
-      );
+    let result = await sdk.tryRestore();
+    if (!result) {
+      process.stderr.write("No existing session. Connecting...\n\n");
+      result = await sdk.connect();
     }
-  } catch {
-    // Silently ignore balance check failures
+
+    const { address } = parseAccount(result.accounts[0]);
+
+    const bridgeResult = await swidgeViaWalletConnect(sdk, address, {
+      fromChain,
+      toChain,
+      fromToken,
+      toToken,
+      amount,
+    });
+
+    process.stdout.write(JSON.stringify(bridgeResult));
+  } finally {
+    await sdk.destroy();
   }
 }
 
@@ -327,7 +350,7 @@ async function main(): Promise<void> {
 
   switch (command) {
     case "connect":
-      await cmdConnect(browser, chains.length > 0 ? chains : undefined);
+      await cmdConnect(browser, chains.length > 0 ? chains : ["evm"]);
       break;
     case "whoami":
       await cmdWhoami(json);
@@ -359,6 +382,9 @@ async function main(): Promise<void> {
       await cmdSendTransaction(txJson, browser);
       break;
     }
+    case "swidge":
+      await cmdSwidge(browser, filtered.slice(1));
+      break;
     case "disconnect":
       await cmdDisconnect();
       break;
