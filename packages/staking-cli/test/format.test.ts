@@ -19,6 +19,16 @@ describe("formatWCT", () => {
     // 1.5 WCT
     expect(formatWCT(1500000000000000000n)).toBe("1.50");
   });
+
+  it("truncates instead of rounding up", () => {
+    // 112.887964254423744364 WCT — must display 112.88, not 112.89
+    expect(formatWCT(112887964254423744364n)).toBe("112.88");
+  });
+
+  it("truncates .999 without rounding to next integer", () => {
+    // 9.999 WCT — must display 9.99, not 10.00
+    expect(formatWCT(9999000000000000000n)).toBe("9.99");
+  });
 });
 
 describe("formatDate", () => {
