@@ -66,6 +66,17 @@ export function parseChainId(caip2: string): number {
 }
 
 /**
+ * Resolve a viem Chain object by its numeric chain ID.
+ * Used by the LI.FI SDK switchChain callback.
+ */
+export function resolveChainByNumericId(numericId: number): Chain {
+  for (const entry of Object.values(CHAIN_REGISTRY)) {
+    if (entry.chain.id === numericId) return entry.chain;
+  }
+  throw new Error(`Unsupported numeric chain ID: ${numericId}`);
+}
+
+/**
  * Get the human-readable name for a CAIP-2 chain.
  */
 export function getChainName(caip2: string): string {

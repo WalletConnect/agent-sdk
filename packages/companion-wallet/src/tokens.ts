@@ -62,6 +62,39 @@ export function getToken(symbol: string, chain: string): TokenInfo {
 }
 
 /**
+ * Reverse-lookup: find a token symbol by its contract address on a chain.
+ * Returns null if no registered token matches.
+ */
+export function findTokenSymbolByAddress(
+  address: string,
+  chain: string,
+): string | null {
+  const symbols = getTokenSymbols(chain);
+  for (const sym of symbols) {
+    const token = getToken(sym, chain);
+    if (
+      token.address &&
+      token.address.toLowerCase() === address.toLowerCase()
+    ) {
+      return sym;
+    }
+  }
+  return null;
+}
+
+/** Native token address used by LI.FI SDK */
+const NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+/**
+ * Get the token address in the format expected by LI.FI SDK.
+ * Returns the zero address for native tokens (ETH).
+ */
+export function getLifiTokenAddress(symbol: string, chain: string): string {
+  const token = getToken(symbol, chain);
+  return token.address || NATIVE_TOKEN_ADDRESS;
+}
+
+/**
  * Parse a human-readable amount into its smallest unit (wei / micro-USDC).
  */
 export function parseTokenAmount(amount: string, decimals: number): bigint {

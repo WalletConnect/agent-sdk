@@ -26,7 +26,8 @@ export type Operation =
   | "balance"
   | "fund"
   | "drain"
-  | "history";
+  | "history"
+  | "swidge";
 
 /** Info response */
 export interface InfoResponse {
@@ -194,6 +195,51 @@ export interface AuditEntry {
   sessionId?: string;
   success: boolean;
   error?: string;
+}
+
+/** Swidge (swap/bridge) options for manual bridging */
+export interface SwidgeOptions {
+  fromChain: string;
+  toChain: string;
+  fromToken: string;
+  toToken: string;
+  amount: string;
+}
+
+/** Result of a sufficiency check — what's missing */
+export interface SwidgeNeeded {
+  token: string;
+  needed: bigint;
+  available: bigint;
+  deficit: bigint;
+  isGas: boolean;
+}
+
+/** Result of the swidgeIfNeeded check */
+export interface SwidgeResult {
+  bridged: boolean;
+  bridgeResult?: BridgeResult;
+}
+
+/** Result of an executed bridge/swap */
+export interface BridgeResult {
+  fromChain: string;
+  toChain: string;
+  fromToken: string;
+  toToken: string;
+  fromAmount: string;
+  toAmount: string;
+  txHash: string;
+}
+
+/** Piped JSON input for the swidge CLI operation */
+export interface SwidgeInput {
+  fromChain: string;
+  toChain: string;
+  fromToken: string;
+  toToken: string;
+  amount: string;
+  account?: string;
 }
 
 /** History query input (CLI flags) */

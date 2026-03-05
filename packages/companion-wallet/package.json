@@ -30,6 +30,7 @@
     "lint": "eslint --fix 'src/**/*.ts'"
   },
   "dependencies": {
+    "@lifi/sdk": "^3.15.7",
     "@walletconnect/cli-sdk": "*",
     "viem": "^2.30.0"
   },

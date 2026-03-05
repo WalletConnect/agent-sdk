@@ -32,6 +32,7 @@ import {
   type GetSessionInput,
   type ErrorResponse,
   type HistoryInput,
+  type SwidgeInput,
 } from "./types.js";
 
 function getVersion(): string {
@@ -119,6 +120,7 @@ async function handleInfo(): Promise<void> {
       "fund",
       "drain",
       "history",
+      "swidge",
     ],
     chains: SUPPORTED_CHAINS,
   };
@@ -415,6 +417,70 @@ async function handleDrain(): Promise<void> {
   }
 }
 
+async function handleSwidge(): Promise<void> {
+  warnBeta();
+  let account = parseCliArg("account");
+  let fromChain = parseCliArg("from-chain");
+  let toChain = parseCliArg("to-chain");
+  let fromToken = parseCliArg("from-token");
+  let toToken = parseCliArg("to-token");
+  let amount = parseCliArg("amount");
+
+  // Also accept piped JSON input
+  const input = await parseInput<SwidgeInput>();
+  if (input?.fromChain) fromChain = input.fromChain;
+  if (input?.toChain) toChain = input.toChain;
+  if (input?.fromToken) fromToken = input.fromToken;
+  if (input?.toToken) toToken = input.toToken;
+  if (input?.amount) amount = input.amount;
+  if (input?.account) account = input.account;
+
+  try {
+    // Interactive prompts when flags missing and TTY
+    if (process.stdin.isTTY) {
+      if (!fromChain) fromChain = await selectChain();
+      if (!fromToken) fromToken = await selectToken(fromChain);
+      if (!toChain) toChain = await selectChain();
+      if (!toToken) toToken = await selectToken(toChain);
+      if (!amount) amount = await inputAmount(fromToken);
+    }
+
+    if (!fromChain || !toChain || !amount) {
+      respondError(
+        "Missing required flags: --from-chain, --to-chain, --amount",
+        "INVALID_INPUT",
+      );
+      process.exit(ExitCode.ERROR);
+    }
+
+    if (!account) {
+      const addresses = listAddresses();
+      if (addresses.length === 0) {
+        respondError("No wallet found. Run 'generate' first.", "INVALID_INPUT");
+        process.exit(ExitCode.ERROR);
+      }
+      account = addresses[0];
+    }
+
+    const privateKey = loadKey(account);
+    const { swidge } = await import("./swidge.js");
+    const result = await swidge(privateKey, {
+      fromChain,
+      toChain,
+      fromToken: fromToken || "eth",
+      toToken: toToken || "eth",
+      amount,
+    });
+    respond(result);
+  } catch (err) {
+    respondError(
+      err instanceof Error ? err.message : "Swidge failed",
+      "SWIDGE_ERROR",
+    );
+    process.exit(ExitCode.ERROR);
+  }
+}
+
 async function handleHistory(): Promise<void> {
   try {
     const lastRaw = parseCliArg("last");
@@ -471,6 +537,7 @@ const HANDLERS: Record<Operation, () => Promise<void>> = {
   fund: handleFund,
   drain: handleDrain,
   history: handleHistory,
+  swidge: handleSwidge,
 };
 
 async function main(): Promise<void> {
