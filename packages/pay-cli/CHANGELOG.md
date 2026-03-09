@@ -1,5 +1,12 @@
 # @walletconnect/pay-cli
 
+## 0.8.3
+
+### Patch Changes
+
+- Updated dependencies [[`88b7bea`](https://github.com/WalletConnect/agent-sdk/commit/88b7bea75e7ae80339944afe93165091b3d8f179)]:
+  - @walletconnect/cli-sdk@0.8.3
+
 ## 0.8.2
 
 ### Patch Changes
