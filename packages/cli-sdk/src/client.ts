@@ -141,6 +141,11 @@ export class WalletConnectCLI extends EventEmitter {
 
     this.logRequestDetails(options);
 
+    // Absorb relay WebSocket errors so they don't crash the process
+    // as unhandled 'error' events (the actual rejection is caught below).
+    const swallow = () => {};
+    client.core.relayer.on("error", swallow);
+
     try {
       return await client.request<T>({
         topic,
@@ -162,6 +167,8 @@ export class WalletConnectCLI extends EventEmitter {
       }
 
       throw error;
+    } finally {
+      client.core.relayer.off("error", swallow);
     }
   }
 
