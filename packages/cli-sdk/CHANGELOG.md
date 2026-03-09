@@ -1,5 +1,11 @@
 # @walletconnect/cli-sdk
 
+## 0.8.4
+
+### Patch Changes
+
+- [#42](https://github.com/WalletConnect/agent-sdk/pull/42) [`d3f928d`](https://github.com/WalletConnect/agent-sdk/commit/d3f928d3769fa1cd3e8deb887e826399bab828ec) Thanks [@arein](https://github.com/arein)! - Add pre-flight balance check before swidge (errors early with "Insufficient balance: have X, need Y") and on-chain tx receipt confirmation (polls eth_getTransactionReceipt instead of treating submission as confirmation)
+
 ## 0.8.3
 
 ### Patch Changes
