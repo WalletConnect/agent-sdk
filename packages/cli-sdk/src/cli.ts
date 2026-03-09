@@ -298,9 +298,10 @@ async function cmdSwidge(browser: boolean, args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const chains = [fromChain];
-  if (!chains.includes(toChain)) chains.push(toChain);
-  const sdk = createSDK({ projectId, browser, chains });
+  // Only require the source chain in the session — the bridge tx is sent on fromChain.
+  // Including toChain causes NO_MATCHING_KEY when restoring a session that doesn't
+  // include the destination chain in its approved namespaces.
+  const sdk = createSDK({ projectId, browser, chains: [fromChain] });
 
   try {
     let result = await sdk.tryRestore();
