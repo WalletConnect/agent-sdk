@@ -174,25 +174,37 @@ async function cmdSignTypedData(typedDataJson: string, browser: boolean): Promis
       console.log();
     }
 
-    const { chain, address } = parseAccount(result.accounts[0]);
-
     // Validate JSON before sending
+    let typedData: { domain?: { chainId?: string | number } };
     try {
-      JSON.parse(typedDataJson);
+      typedData = JSON.parse(typedDataJson);
     } catch {
       console.error("Error: Invalid JSON for typed data. Provide a valid EIP-712 JSON string.");
       process.exit(1);
     }
 
+    // Extract chainId from typed data domain to find the matching account
+    const domainChainId = typedData.domain?.chainId;
+    let account: { chain: string; address: string };
+    if (domainChainId !== undefined) {
+      const targetChain = `eip155:${domainChainId}`;
+      const match = result.accounts
+        .map((a) => parseAccount(a))
+        .find((a) => a.chain === targetChain);
+      account = match || parseAccount(result.accounts[0]);
+    } else {
+      account = parseAccount(result.accounts[0]);
+    }
+
     const signature = await sdk.request<string>({
-      chainId: chain,
+      chainId: account.chain,
       request: {
         method: "eth_signTypedData_v4",
-        params: [address, typedDataJson],
+        params: [account.address, typedDataJson],
       },
     });
 
-    console.log(JSON.stringify({ address, signature }));
+    console.log(JSON.stringify({ address: account.address, signature }));
   } finally {
     await sdk.destroy();
   }
