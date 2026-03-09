@@ -1,5 +1,11 @@
 # @walletconnect/cli-sdk
 
+## 0.8.3
+
+### Patch Changes
+
+- [#40](https://github.com/WalletConnect/agent-sdk/pull/40) [`88b7bea`](https://github.com/WalletConnect/agent-sdk/commit/88b7bea75e7ae80339944afe93165091b3d8f179) Thanks [@arein](https://github.com/arein)! - Fix swidge NO_MATCHING_KEY error by only requiring source chain in session namespaces, and prevent unhandled relay errors from crashing Node during wallet request rejection/timeout
+
 ## 0.8.2
 
 ### Patch Changes
