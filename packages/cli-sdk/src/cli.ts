@@ -2,6 +2,13 @@ import { WalletConnectCLI } from "./client.js";
 import { resolveProjectId, setConfigValue, getConfigValue } from "./config.js";
 import { trySwidgeBeforeSend, swidgeViaWalletConnect } from "./swidge.js";
 
+// Prevent unhandled WC relay errors from crashing the process with minified dumps
+process.on("unhandledRejection", (err) => {
+  const msg = err instanceof Error ? err.message : String(err);
+  process.stderr.write(`Error: ${msg}\n`);
+  process.exit(1);
+});
+
 declare const __VERSION__: string;
 
 const METADATA = {
