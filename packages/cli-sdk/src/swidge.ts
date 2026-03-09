@@ -134,6 +134,39 @@ export async function getBalanceRpc(chainId: string, address: string): Promise<b
   return BigInt(await rpcCall(url, "eth_getBalance", [address, "latest"]));
 }
 
+async function getTokenBalanceRpc(
+  chainId: string, tokenAddress: string, owner: string,
+): Promise<bigint> {
+  const url = rpcUrl(chainId);
+  if (!url) return 0n;
+  // balanceOf(address) = 0x70a08231
+  const data = "0x70a08231" + owner.slice(2).toLowerCase().padStart(64, "0");
+  const result = await rpcCall(url, "eth_call", [{ to: tokenAddress, data }, "latest"]);
+  return BigInt(result);
+}
+
+interface TxReceipt { status: string; transactionHash: string; blockNumber: string }
+
+async function waitForReceipt(
+  chainId: string, txHash: string, timeoutMs = 120_000,
+): Promise<TxReceipt> {
+  const url = rpcUrl(chainId);
+  if (!url) throw new Error(`No RPC URL for chain ${chainId}`);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt", params: [txHash] }),
+    });
+    const json = (await res.json()) as { result: TxReceipt | null; error?: { message: string } };
+    if (json.error) throw new Error(json.error.message);
+    if (json.result) return json.result;
+    await new Promise((r) => setTimeout(r, 3_000));
+  }
+  throw new Error(`Timed out waiting for receipt of ${txHash}`);
+}
+
 async function getAllowanceRpc(
   chainId: string, tokenAddress: string,
   owner: string, spender: string,
@@ -206,15 +239,32 @@ export async function swidgeViaWalletConnect(
     `~${estimatedOut} ${toSymbol} (${chainName(options.toChain)})\n`,
   );
 
-  // ERC-20 approval if needed
+  // Pre-flight balance check — fail early before sending to the wallet
   const fromTokenAddr = quote.action.fromToken.address;
+  const quoteFromAmount = BigInt(quote.action.fromAmount);
+  if (rpcUrl(options.fromChain)) {
+    try {
+      const balance = isNativeToken(fromTokenAddr)
+        ? await getBalanceRpc(options.fromChain, address)
+        : await getTokenBalanceRpc(options.fromChain, fromTokenAddr, address);
+      if (balance < quoteFromAmount) {
+        const have = formatAmount(balance, quote.action.fromToken.decimals);
+        throw new Error(
+          `Insufficient balance: have ${have} ${fromSymbol}, need ${options.amount} ${fromSymbol}`,
+        );
+      }
+    } catch (err) {
+      // Re-throw insufficient balance errors; swallow RPC lookup failures
+      if (err instanceof Error && err.message.startsWith("Insufficient balance")) throw err;
+    }
+  }
+
+  // ERC-20 approval if needed
   if (!isNativeToken(fromTokenAddr) && quote.estimate.approvalAddress) {
     const allowance = await getAllowanceRpc(
       options.fromChain, fromTokenAddr, address, quote.estimate.approvalAddress,
     );
 
-    // Use the amount from the LI.FI quote (what the router expects)
-    const quoteFromAmount = BigInt(quote.action.fromAmount);
     if (allowance < quoteFromAmount) {
       process.stderr.write(`  Requesting token approval in wallet...\n`);
 
@@ -223,7 +273,7 @@ export async function swidgeViaWalletConnect(
         quote.estimate.approvalAddress.slice(2).toLowerCase().padStart(64, "0") +
         quoteFromAmount.toString(16).padStart(64, "0");
 
-      await sdk.request<string>({
+      const approveTxHash = await sdk.request<string>({
         chainId: options.fromChain,
         request: {
           method: "eth_sendTransaction",
@@ -236,6 +286,13 @@ export async function swidgeViaWalletConnect(
         },
       });
 
+      // Verify approval on-chain before proceeding to the bridge tx
+      if (rpcUrl(options.fromChain)) {
+        const receipt = await waitForReceipt(options.fromChain, approveTxHash);
+        if (receipt.status !== "0x1") {
+          throw new Error(`Approval transaction reverted: ${approveTxHash}`);
+        }
+      }
       process.stderr.write(`  Approval confirmed.\n`);
     }
   }
@@ -257,7 +314,24 @@ export async function swidgeViaWalletConnect(
     },
   });
 
-  process.stderr.write(`  Bridge tx confirmed: ${txHash}\n`);
+  process.stderr.write(`  Bridge tx submitted: ${txHash}\n`);
+
+  // Wait for on-chain confirmation
+  if (rpcUrl(options.fromChain)) {
+    process.stderr.write(`  Waiting for on-chain confirmation...`);
+    try {
+      const receipt = await waitForReceipt(options.fromChain, txHash);
+      if (receipt.status === "0x1") {
+        process.stderr.write(` confirmed.\n`);
+      } else {
+        process.stderr.write(` reverted!\n`);
+        throw new Error(`Bridge transaction reverted: ${txHash}`);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("reverted")) throw err;
+      process.stderr.write(` failed to get receipt: ${err instanceof Error ? err.message : String(err)}\n`);
+    }
+  }
 
   return {
     fromChain: options.fromChain,
