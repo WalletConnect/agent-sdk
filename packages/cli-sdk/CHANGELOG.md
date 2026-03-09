@@ -1,5 +1,11 @@
 # @walletconnect/cli-sdk
 
+## 0.8.2
+
+### Patch Changes
+
+- [#37](https://github.com/WalletConnect/agent-sdk/pull/37) [`f6c6025`](https://github.com/WalletConnect/agent-sdk/commit/f6c602542b3566b03bb2846968176aec0090a8e8) Thanks [@arein](https://github.com/arein)! - Fix sign-typed-data routing to use the correct chain from the typed data domain instead of always defaulting to eip155:1
+
 ## 0.8.1
 
 ## 0.8.0
