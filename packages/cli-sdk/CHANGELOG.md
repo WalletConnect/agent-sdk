@@ -1,5 +1,17 @@
 # @walletconnect/cli-sdk
 
+## 0.8.5
+
+### Patch Changes
+
+- [#45](https://github.com/WalletConnect/agent-sdk/pull/45) [`4d091c0`](https://github.com/WalletConnect/agent-sdk/commit/4d091c0df32e117586ef679ea09b8380caf48a32) Thanks [@arein](https://github.com/arein)! - Add multi-chain gas support, automatic refuel, and on-chain receipt verification
+
+  - Expand EVM chain support from 3 to 8 chains with per-chain gasToken and gasCost rankings
+  - Add automatic destination gas refuel before cross-chain bridges
+  - Add on-chain receipt verification after send-transaction (confirmed/reverted)
+  - Export rpcUrl, waitForReceipt, and TxReceipt for downstream CLI consumers
+  - Add Hyperliquid (HyperEVM) to default EVM chain aliases
+
 ## 0.8.4
 
 ### Patch Changes
