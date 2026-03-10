@@ -50,10 +50,16 @@ export interface SwidgeCLIResult {
 
 // --- Constants ---
 
-const EVM_CHAINS: Record<string, { name: string; rpc: string }> = {
-  "eip155:1": { name: "Ethereum", rpc: "https://eth.drpc.org" },
-  "eip155:8453": { name: "Base", rpc: "https://mainnet.base.org" },
-  "eip155:10": { name: "Optimism", rpc: "https://mainnet.optimism.io" },
+// gasCost: relative gas cost ranking (lower = cheaper, used to prefer cheap chains for refuel)
+const EVM_CHAINS: Record<string, { name: string; rpc: string; gasToken?: string; gasCost: number }> = {
+  "eip155:42161": { name: "Arbitrum One", rpc: "https://arb1.arbitrum.io/rpc", gasCost: 1 },
+  "eip155:8453": { name: "Base", rpc: "https://mainnet.base.org", gasCost: 1 },
+  "eip155:10": { name: "Optimism", rpc: "https://mainnet.optimism.io", gasCost: 1 },
+  "eip155:137": { name: "Polygon", rpc: "https://1rpc.io/matic", gasToken: "POL", gasCost: 1 },
+  "eip155:56": { name: "BNB Chain", rpc: "https://bsc-dataseed.binance.org", gasCost: 2 },
+  "eip155:43114": { name: "Avalanche", rpc: "https://api.avax.network/ext/bc/C/rpc", gasCost: 2 },
+  "eip155:999": { name: "Hyperliquid", rpc: "https://rpc.hyperliquid.xyz/evm", gasToken: "HYPE", gasCost: 1 },
+  "eip155:1": { name: "Ethereum", rpc: "https://eth.drpc.org", gasCost: 10 },
 };
 
 const LIFI_API = "https://li.quest/v1";
@@ -78,7 +84,7 @@ function chainName(caip2: string): string {
   return EVM_CHAINS[caip2]?.name || caip2;
 }
 
-function rpcUrl(caip2: string): string | undefined {
+export function rpcUrl(caip2: string): string | undefined {
   return EVM_CHAINS[caip2]?.rpc;
 }
 
@@ -145,9 +151,9 @@ async function getTokenBalanceRpc(
   return BigInt(result);
 }
 
-interface TxReceipt { status: string; transactionHash: string; blockNumber: string }
+export interface TxReceipt { status: string; transactionHash: string; blockNumber: string; gasUsed: string }
 
-async function waitForReceipt(
+export async function waitForReceipt(
   chainId: string, txHash: string, timeoutMs = 120_000,
 ): Promise<TxReceipt> {
   const url = rpcUrl(chainId);
@@ -215,6 +221,7 @@ export async function swidgeViaWalletConnect(
   sdk: WalletConnectCLI,
   address: string,
   options: SwidgeCLIOptions,
+  _isRefuel = false,
 ): Promise<SwidgeCLIResult> {
   const fromChainId = parseChainId(options.fromChain);
   const toChainId = parseChainId(options.toChain);
@@ -257,6 +264,12 @@ export async function swidgeViaWalletConnect(
       // Re-throw insufficient balance errors; swallow RPC lookup failures
       if (err instanceof Error && err.message.startsWith("Insufficient balance")) throw err;
     }
+  }
+
+  // Refuel check — ensure destination chain has gas for subsequent transactions
+  // Skip if this is already a refuel operation (explicit flag prevents recursion)
+  if (options.fromChain !== options.toChain && !_isRefuel) {
+    await refuelIfNeeded(sdk, address, options.fromChain, options.toChain, options.fromToken);
   }
 
   // ERC-20 approval if needed
@@ -344,9 +357,110 @@ export async function swidgeViaWalletConnect(
   };
 }
 
+// --- Destination gas refuel ---
+
+/** Minimum gas balance threshold (in wei). Below this, we refuel. */
+const MIN_GAS_WEI = 10n ** 15n; // 0.001 ETH/native token
+
+/** Approximate ~$1 refuel amount by token symbol. Avoids decimal-based guessing. */
+const REFUEL_AMOUNTS: Record<string, string> = {
+  usdc: "1", usdt: "1", dai: "1", busd: "1",       // stablecoins: $1 = 1 token
+  wbtc: "0.00002",                                   // ~$1 at $50k/BTC
+  // Everything else (ETH, POL, AVAX, HYPE, etc.) uses default "0.001" below
+};
+
+function getRefuelAmount(token: string): string {
+  return REFUEL_AMOUNTS[token.toLowerCase()] ?? "0.001";
+}
+
 /**
- * Check if a send-transaction has insufficient ETH and offer to bridge.
- * In TTY mode: prompts user. In pipe mode: auto-bridges.
+ * Check if the destination chain has enough native gas token.
+ * If not, bridge a small amount of the user's fromToken (e.g. USDC) → dest gas token.
+ * This avoids requiring native gas on the source chain.
+ *
+ * Note: In pipe mode (non-TTY), auto-refuel proceeds without prompting.
+ * This is safe for WalletConnect because the user's wallet always prompts
+ * for manual approval of each transaction.
+ *
+ * @param fromToken - the token the user is already bridging (e.g. "USDC")
+ */
+async function refuelIfNeeded(
+  sdk: WalletConnectCLI,
+  address: string,
+  fromChain: string,
+  toChain: string,
+  fromToken?: string,
+): Promise<void> {
+  const destRpc = rpcUrl(toChain);
+  if (!destRpc) return; // can't check, skip
+
+  let destBalance: bigint;
+  try {
+    destBalance = await getBalanceRpc(toChain, address);
+  } catch {
+    return; // RPC failed, skip
+  }
+
+  if (destBalance >= MIN_GAS_WEI) return; // has enough gas
+
+  const destChain = EVM_CHAINS[toChain];
+  const destGasToken = destChain?.gasToken || "ETH";
+
+  // Use the same token the user is bridging (e.g. USDC) as refuel source,
+  // so we don't need native gas on the source chain. Fall back to source gas token.
+  const refuelFromToken = fromToken || EVM_CHAINS[fromChain]?.gasToken || "ETH";
+  const refuelAmount = getRefuelAmount(refuelFromToken);
+
+  process.stderr.write(
+    `\n  ⛽ No ${destGasToken} on ${chainName(toChain)} for gas.\n`,
+  );
+
+  // TTY: prompt; pipe: auto-refuel (safe — WalletConnect always requires wallet approval)
+  if (process.stdin.isTTY) {
+    const readline = await import("node:readline/promises");
+    const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
+    const answer = await rl.question(
+      `  Bridge ~${refuelAmount} ${refuelFromToken} from ${chainName(fromChain)} → ${destGasToken} for gas? (y/n) `,
+    );
+    rl.close();
+    if (answer.trim().toLowerCase() !== "y") {
+      process.stderr.write(`  Skipping refuel — transactions on ${chainName(toChain)} may fail without gas.\n\n`);
+      return;
+    }
+  } else {
+    process.stderr.write(
+      `  Auto-bridging ~${refuelAmount} ${refuelFromToken} from ${chainName(fromChain)} → ${destGasToken} for gas...\n`,
+    );
+  }
+
+  try {
+    await swidgeViaWalletConnect(sdk, address, {
+      fromChain,
+      toChain,
+      fromToken: refuelFromToken,
+      toToken: destGasToken,
+      amount: refuelAmount,
+    }, true); // _isRefuel=true prevents recursion
+
+    // Wait for gas to arrive
+    process.stderr.write(`  Waiting for gas to arrive...`);
+    const arrived = await waitForBalance(toChain, address, destBalance, 120_000);
+    if (arrived) {
+      process.stderr.write(` done.\n\n`);
+    } else {
+      process.stderr.write(` timed out. Proceeding anyway.\n\n`);
+    }
+  } catch (err) {
+    process.stderr.write(
+      `\n  Refuel failed: ${err instanceof Error ? err.message : String(err)}\n` +
+      `  Proceeding — you may need to manually bridge gas to ${chainName(toChain)}.\n\n`,
+    );
+  }
+}
+
+/**
+ * Check if a send-transaction has insufficient gas token and offer to bridge.
+ * In TTY mode: prompts user. In pipe mode: auto-bridges (safe — wallet always approves).
  * Returns the bridge result if bridging occurred, null otherwise.
  */
 export async function trySwidgeBeforeSend(
@@ -356,6 +470,8 @@ export async function trySwidgeBeforeSend(
   txValue: string | undefined,
 ): Promise<SwidgeCLIResult | null> {
   if (!rpcUrl(chainId) || !txValue) return null;
+
+  const gasToken = EVM_CHAINS[chainId]?.gasToken || "ETH";
 
   let balance: bigint;
   let value: bigint;
@@ -370,47 +486,51 @@ export async function trySwidgeBeforeSend(
   // Add 10% buffer for gas costs on the destination tx
   const deficit = (value - balance) * 11n / 10n;
 
-  // Find a source chain with funds (collect then reduce to avoid race)
-  const otherChains = Object.keys(EVM_CHAINS).filter((c) => c !== chainId);
+  // Find a source chain with funds — prefer cheapest gas chains first
+  const otherChains = Object.keys(EVM_CHAINS)
+    .filter((c) => c !== chainId)
+    .sort((a, b) => (EVM_CHAINS[a].gasCost - EVM_CHAINS[b].gasCost));
   const balances = await Promise.all(
     otherChains.map(async (chain) => {
       try {
-        return { chain, balance: await getBalanceRpc(chain, address) };
+        return { chain, balance: await getBalanceRpc(chain, address), gasCost: EVM_CHAINS[chain].gasCost };
       } catch {
-        return { chain, balance: 0n };
+        return { chain, balance: 0n, gasCost: EVM_CHAINS[chain].gasCost };
       }
     }),
   );
-  const best = balances.reduce(
-    (a, b) => (b.balance > a.balance ? b : a),
-    { chain: "", balance: 0n },
-  );
+  // Pick cheapest chain that has sufficient balance; fall back to richest
+  const sufficient = balances.filter((b) => b.balance >= deficit);
+  const best = sufficient.length > 0
+    ? sufficient.sort((a, b) => a.gasCost - b.gasCost)[0]
+    : balances.reduce((a, b) => (b.balance > a.balance ? b : a), { chain: "", balance: 0n, gasCost: 99 });
   const sourceChain = best.balance > 0n ? best.chain : null;
 
   if (!sourceChain) {
     process.stderr.write(
-      `\nWarning: Insufficient ETH on ${chainName(chainId)} and no funds found on other chains.\n` +
-      `  Consider: walletconnect swidge --from-chain <chain> --to-chain ${chainId} --from-token ETH --to-token ETH --amount <needed>\n\n`,
+      `\nWarning: Insufficient ${gasToken} on ${chainName(chainId)} and no funds found on other chains.\n` +
+      `  Consider: walletconnect swidge --from-chain <chain> --to-chain ${chainId} --from-token ${gasToken} --to-token ${gasToken} --amount <needed>\n\n`,
     );
     return null;
   }
 
   const deficitFormatted = formatAmount(deficit, 18);
+  const sourceGasToken = EVM_CHAINS[sourceChain]?.gasToken || "ETH";
 
-  // TTY: prompt; pipe: auto-bridge
+  // TTY: prompt; pipe: auto-bridge (safe — wallet always approves)
   if (process.stdin.isTTY) {
     const readline = await import("node:readline/promises");
     const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
     process.stderr.write(
-      `\nInsufficient ETH on ${chainName(chainId)}.\n` +
-      `  Bridge ~${deficitFormatted} ETH from ${chainName(sourceChain)}?\n`,
+      `\nInsufficient ${gasToken} on ${chainName(chainId)}.\n` +
+      `  Bridge ~${deficitFormatted} ${sourceGasToken} from ${chainName(sourceChain)}?\n`,
     );
     const answer = await rl.question("  Proceed? (y/n) ");
     rl.close();
     if (answer.trim().toLowerCase() !== "y") return null;
   } else {
     process.stderr.write(
-      `Auto-bridging ~${deficitFormatted} ETH from ${chainName(sourceChain)} to ${chainName(chainId)}...\n`,
+      `Auto-bridging ~${deficitFormatted} ${sourceGasToken} from ${chainName(sourceChain)} to ${chainName(chainId)}...\n`,
     );
   }
 
@@ -418,8 +538,8 @@ export async function trySwidgeBeforeSend(
     const result = await swidgeViaWalletConnect(sdk, address, {
       fromChain: sourceChain,
       toChain: chainId,
-      fromToken: "ETH",
-      toToken: "ETH",
+      fromToken: sourceGasToken,
+      toToken: gasToken,
       amount: deficitFormatted,
     });
 

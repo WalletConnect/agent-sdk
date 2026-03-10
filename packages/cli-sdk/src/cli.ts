@@ -1,6 +1,7 @@
 import { WalletConnectCLI } from "./client.js";
 import { resolveProjectId, setConfigValue, getConfigValue } from "./config.js";
-import { trySwidgeBeforeSend, swidgeViaWalletConnect } from "./swidge.js";
+import { trySwidgeBeforeSend, swidgeViaWalletConnect, rpcUrl, waitForReceipt } from "./swidge.js";
+import type { TxReceipt } from "./swidge.js";
 
 // Prevent unhandled WC relay errors from crashing the process with minified dumps
 process.on("unhandledRejection", (err) => {
@@ -273,7 +274,27 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
         },
       });
 
-      process.stdout.write(JSON.stringify({ transactionHash: txHash }));
+      // Verify on-chain receipt
+      let reverted = false;
+      if (rpcUrl(chainId)) {
+        process.stderr.write(`\n  Tx submitted: ${txHash}\n  Waiting for confirmation...`);
+        try {
+          const receipt = await waitForReceipt(chainId, txHash, 60_000);
+          if (receipt.status === "0x1") {
+            process.stderr.write(` confirmed.\n`);
+          } else {
+            reverted = true;
+            process.stderr.write(` reverted!\n`);
+            process.stderr.write(`  Gas used: ${parseInt(receipt.gasUsed, 16)}\n`);
+            process.stderr.write(`  Transaction failed on-chain. Check the tx on a block explorer.\n`);
+          }
+        } catch {
+          process.stderr.write(` receipt not available yet.\n`);
+        }
+      }
+
+      process.stdout.write(JSON.stringify({ transactionHash: txHash, reverted }));
+      if (reverted) process.exit(1);
     }
   } finally {
     await sdk.destroy();
