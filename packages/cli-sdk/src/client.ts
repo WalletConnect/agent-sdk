@@ -57,6 +57,7 @@ const CHAIN_ALIASES: Record<string, string | string[]> = {
     "eip155:1284",    // Moonbeam
     "eip155:1285",    // Moonriver
     "eip155:25",      // Cronos
+    "eip155:999",     // Hyperliquid (HyperEVM)
   ],
 };
 
