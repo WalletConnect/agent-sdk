@@ -1,7 +1,7 @@
 import { WalletConnectCLI } from "./client.js";
 import { resolveProjectId, setConfigValue, getConfigValue } from "./config.js";
+import { createTelemetry, trackCommand } from "./telemetry.js";
 import { trySwidgeBeforeSend, swidgeViaWalletConnect, rpcUrl, waitForReceipt } from "./swidge.js";
-import type { TxReceipt } from "./swidge.js";
 
 // Prevent unhandled WC relay errors from crashing the process with minified dumps
 process.on("unhandledRejection", (err) => {
@@ -11,6 +11,12 @@ process.on("unhandledRejection", (err) => {
 });
 
 declare const __VERSION__: string;
+
+const telemetry = createTelemetry({
+  binary: "walletconnect",
+  version: typeof __VERSION__ !== "undefined" ? __VERSION__ : "0.0.0-dev",
+  projectId: resolveProjectId(),
+});
 
 const METADATA = {
   name: "WalletConnect Agent SDK",
@@ -49,9 +55,11 @@ Options:
 
 Config keys:
   project-id       WalletConnect Cloud project ID
+  telemetry        Enable/disable anonymous telemetry (true/false)
 
 Environment:
-  WALLETCONNECT_PROJECT_ID   Overrides config project-id when set`);
+  WALLETCONNECT_PROJECT_ID   Overrides config project-id when set
+  WALLETCONNECT_TELEMETRY    Set to 0 to disable telemetry`);
 }
 
 function getProjectId(): string {
@@ -93,6 +101,7 @@ async function cmdConnect(browser: boolean, chains?: string[]): Promise<void> {
   try {
     console.log("Scan this QR code with your wallet app:\n");
     const result = await sdk.connect();
+    telemetry.track("connection_established", { command: "connect" });
     console.log("\nConnected!");
     for (const account of result.accounts) {
       const { chain, address } = parseAccount(account);
@@ -293,6 +302,7 @@ async function cmdSendTransaction(jsonInput: string, browser: boolean): Promise<
         }
       }
 
+      telemetry.track("transaction_sent", { command: "send-transaction", chainId });
       process.stdout.write(JSON.stringify({ transactionHash: txHash, reverted }));
       if (reverted) process.exit(1);
     }
@@ -348,6 +358,7 @@ async function cmdSwidge(browser: boolean, args: string[]): Promise<void> {
       amount,
     });
 
+    telemetry.track("bridge_completed", { command: "swidge", fromChain, toChain });
     process.stdout.write(JSON.stringify(bridgeResult));
   } finally {
     await sdk.destroy();
@@ -389,92 +400,106 @@ async function main(): Promise<void> {
   }
   const command = filtered[0];
 
-  switch (command) {
-    case "connect":
-      await cmdConnect(browser, chains.length > 0 ? chains : ["evm"]);
-      break;
-    case "whoami":
-      await cmdWhoami(json);
-      break;
-    case "sign": {
-      const message = filtered[1];
-      if (!message) {
-        console.error("Usage: walletconnect sign <message>");
-        process.exit(1);
-      }
-      await cmdSign(message, browser);
-      break;
-    }
-    case "sign-typed-data": {
-      const typedData = filtered[1];
-      if (!typedData) {
-        console.error("Usage: walletconnect sign-typed-data <json>");
-        process.exit(1);
-      }
-      await cmdSignTypedData(typedData, browser);
-      break;
-    }
-    case "send-transaction": {
-      const txJson = filtered[1];
-      if (!txJson) {
-        console.error("Usage: walletconnect send-transaction '<json>'");
-        process.exit(1);
-      }
-      await cmdSendTransaction(txJson, browser);
-      break;
-    }
-    case "swidge":
-      await cmdSwidge(browser, filtered.slice(1));
-      break;
-    case "disconnect":
-      await cmdDisconnect();
-      break;
-    case "config": {
-      const action = filtered[1];
-      const key = filtered[2];
-      if (action === "set") {
-        const value = filtered[3];
-        if (key === "project-id" && value) {
-          setConfigValue("projectId", value);
-          console.log(`Saved project-id to ~/.walletconnect-cli/config.json`);
-        } else {
-          console.error("Usage: walletconnect config set project-id <value>");
+  const dispatch = async (): Promise<void> => {
+    switch (command) {
+      case "connect":
+        await cmdConnect(browser, chains.length > 0 ? chains : ["evm"]);
+        break;
+      case "whoami":
+        await cmdWhoami(json);
+        break;
+      case "sign": {
+        const message = filtered[1];
+        if (!message) {
+          console.error("Usage: walletconnect sign <message>");
           process.exit(1);
         }
-      } else if (action === "get") {
-        if (key === "project-id") {
-          const value = getConfigValue("projectId");
-          console.log(value || "(not set)");
-        } else {
-          console.error("Usage: walletconnect config get project-id");
+        await cmdSign(message, browser);
+        break;
+      }
+      case "sign-typed-data": {
+        const typedData = filtered[1];
+        if (!typedData) {
+          console.error("Usage: walletconnect sign-typed-data <json>");
           process.exit(1);
         }
-      } else {
-        console.error("Usage: walletconnect config <set|get> <key> [value]");
-        process.exit(1);
+        await cmdSignTypedData(typedData, browser);
+        break;
       }
-      break;
+      case "send-transaction": {
+        const txJson = filtered[1];
+        if (!txJson) {
+          console.error("Usage: walletconnect send-transaction '<json>'");
+          process.exit(1);
+        }
+        await cmdSendTransaction(txJson, browser);
+        break;
+      }
+      case "swidge":
+        await cmdSwidge(browser, filtered.slice(1));
+        break;
+      case "disconnect":
+        await cmdDisconnect();
+        break;
+      case "config": {
+        const action = filtered[1];
+        const key = filtered[2];
+        if (action === "set") {
+          const value = filtered[3];
+          if (key === "project-id" && value) {
+            setConfigValue("projectId", value);
+            console.log(`Saved project-id to ~/.walletconnect-cli/config.json`);
+          } else if (key === "telemetry" && value) {
+            setConfigValue("telemetry", value);
+            console.log(`Saved telemetry to ~/.walletconnect-cli/config.json`);
+          } else {
+            console.error("Usage: walletconnect config set <project-id|telemetry> <value>");
+            process.exit(1);
+          }
+        } else if (action === "get") {
+          if (key === "project-id") {
+            const value = getConfigValue("projectId");
+            console.log(value || "(not set)");
+          } else if (key === "telemetry") {
+            const value = getConfigValue("telemetry");
+            console.log(value || "true");
+          } else {
+            console.error("Usage: walletconnect config get <project-id|telemetry>");
+            process.exit(1);
+          }
+        } else {
+          console.error("Usage: walletconnect config <set|get> <key> [value]");
+          process.exit(1);
+        }
+        break;
+      }
+      case "--version":
+      case "-v":
+        console.log(__VERSION__);
+        break;
+      case "--help":
+      case "-h":
+      case undefined:
+        usage();
+        break;
+      default:
+        console.error(`Unknown command: ${command}`);
+        usage();
+        process.exit(1);
     }
-    case "--version":
-    case "-v":
-      console.log(__VERSION__);
-      break;
-    case "--help":
-    case "-h":
-    case undefined:
-      usage();
-      break;
-    default:
-      console.error(`Unknown command: ${command}`);
-      usage();
-      process.exit(1);
+  };
+
+  if (command && !command.startsWith("-")) {
+    await trackCommand(telemetry, command, dispatch);
+  } else {
+    await dispatch();
   }
 }
 
 main().then(
-  () => process.exit(0),
+  () => telemetry.flush().finally(() => process.exit(0)),
   (err) => {
     console.error(err instanceof Error ? err.message : err);
-    process.exit(1);
+    telemetry.flush().finally(() => process.exit(1));
   },
 );
