@@ -6,6 +6,8 @@ export { createSessionManager } from "./session.js";
 export { createTerminalUI } from "./terminal-ui.js";
 export { createBrowserUI } from "./browser-ui/server.js";
 export { getConfigValue, setConfigValue, resolveProjectId } from "./config.js";
+export { createTelemetry, trackCommand } from "./telemetry.js";
+export type { TelemetryClient, TelemetryOptions } from "./telemetry.js";
 
 // CWP (CLI Wallet Protocol) — provider discovery, execution, and selection
 export {

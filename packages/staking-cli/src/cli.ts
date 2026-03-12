@@ -1,10 +1,16 @@
-import { selectProvider, walletExec } from "@walletconnect/cli-sdk";
+import { selectProvider, walletExec, resolveProjectId, createTelemetry, trackCommand } from "@walletconnect/cli-sdk";
 import type { WalletProviderInfo } from "@walletconnect/cli-sdk";
 import { CAIP2_CHAIN_ID } from "./constants.js";
 import { stake, unstake, claim, status, balance } from "./commands.js";
 import { createCwpSender } from "./wallet.js";
 
 declare const __VERSION__: string;
+
+const telemetry = createTelemetry({
+  binary: "walletconnect-staking",
+  version: typeof __VERSION__ !== "undefined" ? __VERSION__ : "0.0.0-dev",
+  projectId: resolveProjectId(),
+});
 
 function usage(): void {
   console.log(`Usage: walletconnect-staking <command> [options]
@@ -103,71 +109,82 @@ async function resolveWallet(
 async function main(): Promise<void> {
   const { command, positional, address, wallet } = parseArgs(process.argv.slice(2));
 
-  switch (command) {
-    case "stake": {
-      const amount = positional[0];
-      const weeks = positional[1];
-      if (!amount || !weeks) {
-        console.error("Usage: walletconnect-staking stake <amount> <weeks>");
-        process.exit(1);
+  const dispatch = async (): Promise<void> => {
+    switch (command) {
+      case "stake": {
+        const amount = positional[0];
+        const weeks = positional[1];
+        if (!amount || !weeks) {
+          console.error("Usage: walletconnect-staking stake <amount> <weeks>");
+          process.exit(1);
+        }
+        const weeksNum = parseInt(weeks, 10);
+        if (isNaN(weeksNum) || weeksNum <= 0) {
+          console.error("Error: <weeks> must be a positive integer.");
+          process.exit(1);
+        }
+        const resolved = await resolveWallet(wallet, address);
+        await stake(createCwpSender(resolved.providerPath), resolved.address, amount, weeksNum);
+        telemetry.track("transaction_sent", { command, chainId: CAIP2_CHAIN_ID });
+        break;
       }
-      const weeksNum = parseInt(weeks, 10);
-      if (isNaN(weeksNum) || weeksNum <= 0) {
-        console.error("Error: <weeks> must be a positive integer.");
-        process.exit(1);
+
+      case "unstake": {
+        const resolved = await resolveWallet(wallet, address);
+        await unstake(createCwpSender(resolved.providerPath), resolved.address);
+        telemetry.track("transaction_sent", { command, chainId: CAIP2_CHAIN_ID });
+        break;
       }
-      const resolved = await resolveWallet(wallet, address);
-      await stake(createCwpSender(resolved.providerPath), resolved.address, amount, weeksNum);
-      break;
-    }
 
-    case "unstake": {
-      const resolved = await resolveWallet(wallet, address);
-      await unstake(createCwpSender(resolved.providerPath), resolved.address);
-      break;
-    }
-
-    case "claim": {
-      const resolved = await resolveWallet(wallet, address);
-      await claim(createCwpSender(resolved.providerPath), resolved.address);
-      break;
-    }
-
-    case "status": {
-      if (!address) {
-        console.error("Usage: walletconnect-staking status --address=0x...");
-        process.exit(1);
+      case "claim": {
+        const resolved = await resolveWallet(wallet, address);
+        await claim(createCwpSender(resolved.providerPath), resolved.address);
+        telemetry.track("transaction_sent", { command, chainId: CAIP2_CHAIN_ID });
+        break;
       }
-      await status(address);
-      break;
-    }
 
-    case "balance": {
-      if (!address) {
-        console.error("Usage: walletconnect-staking balance --address=0x...");
-        process.exit(1);
+      case "status": {
+        if (!address) {
+          console.error("Usage: walletconnect-staking status --address=0x...");
+          process.exit(1);
+        }
+        await status(address);
+        break;
       }
-      await balance(address);
-      break;
+
+      case "balance": {
+        if (!address) {
+          console.error("Usage: walletconnect-staking balance --address=0x...");
+          process.exit(1);
+        }
+        await balance(address);
+        break;
+      }
+
+      case "--help":
+      case "-h":
+      case undefined:
+        usage();
+        break;
+
+      default:
+        console.error(`Unknown command: ${command}`);
+        usage();
+        process.exit(1);
     }
+  };
 
-    case "--help":
-    case "-h":
-    case undefined:
-      usage();
-      break;
-
-    default:
-      console.error(`Unknown command: ${command}`);
-      usage();
-      process.exit(1);
+  if (command && !command.startsWith("-")) {
+    await trackCommand(telemetry, command, dispatch);
+  } else {
+    await dispatch();
   }
 }
 
 main().then(
-  () => process.exit(0),
+  () => telemetry.flush().finally(() => process.exit(0)),
   (err) => {
     console.error(err instanceof Error ? err.message : err);
-    process.exit(1);
+    telemetry.flush().finally(() => process.exit(1));
   },
 );

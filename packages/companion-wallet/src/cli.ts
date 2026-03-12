@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveProjectId, createTelemetry, trackCommand } from "@walletconnect/cli-sdk";
 import { generateAndStore, loadKey, listAddresses } from "./keystore.js";
 import { signMessage, signTypedData, signTransaction } from "./signer.js";
 import { sendTransaction, getBalances } from "./rpc.js";
@@ -46,6 +47,12 @@ function getVersion(): string {
     return "0.0.0";
   }
 }
+
+const telemetry = createTelemetry({
+  binary: "companion-wallet",
+  version: getVersion(),
+  projectId: resolveProjectId(),
+});
 
 let _stdinCache: string | undefined;
 
@@ -236,6 +243,8 @@ async function handleSendTransaction(): Promise<void> {
     input.transaction,
     input.chain,
   );
+
+  telemetry.track("transaction_sent", { command: "send-transaction", chainId: input.chain });
 
   if (input.sessionId) {
     recordSessionUsage(input.sessionId, "send-transaction", input);
@@ -605,19 +614,18 @@ async function main(): Promise<void> {
     });
   }
 
-  try {
-    await HANDLERS[operation]();
-  } catch (err) {
-    if (err instanceof SessionError) {
-      respondError(err.message, "SESSION_ERROR");
-      process.exit(ExitCode.SESSION_ERROR);
-    }
-    respondError(
-      err instanceof Error ? err.message : "Internal error",
-      "INTERNAL_ERROR",
-    );
-    process.exit(ExitCode.ERROR);
-  }
+  await trackCommand(telemetry, operation, () => HANDLERS[operation]());
 }
 
-main();
+main().then(
+  () => telemetry.flush().finally(() => process.exit(0)),
+  (err) => {
+    if (err instanceof SessionError) {
+      respondError(err.message, "SESSION_ERROR");
+      telemetry.flush().finally(() => process.exit(ExitCode.SESSION_ERROR));
+    } else {
+      respondError(err instanceof Error ? err.message : "Internal error", "INTERNAL_ERROR");
+      telemetry.flush().finally(() => process.exit(ExitCode.ERROR));
+    }
+  },
+);

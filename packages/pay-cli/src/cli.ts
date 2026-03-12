@@ -1,4 +1,5 @@
 import { Cli, z } from "incur";
+import { resolveProjectId, createTelemetry } from "@walletconnect/cli-sdk";
 import { createPayClient } from "./api.js";
 import { createFrontendPayClient } from "./frontend-client.js";
 import { PAY_FRONTEND_STAGING, PAY_FRONTEND_PROD } from "./constants.js";
@@ -10,6 +11,12 @@ import type { WalletRpcAction, Action } from "./types.js";
 declare const __VERSION__: string;
 
 const sdkVersion = typeof __VERSION__ !== "undefined" ? __VERSION__ : "0.0.0-dev";
+
+const telemetry = createTelemetry({
+  binary: "walletconnect-pay",
+  version: sdkVersion,
+  projectId: resolveProjectId(),
+});
 
 /**
  * Resolve the PayClient to use. When `--proxy` is set (or no wallet API key
@@ -54,6 +61,7 @@ cli.command("status", {
     proxy: z.boolean().optional().describe("Proxy through frontend (no API keys needed)"),
   }),
   async run(c) {
+    telemetry.track("command_invoked", { command: "status" });
     const client = resolveClient(c.options);
     const payment = await client.getPayment(c.args.paymentId);
 
@@ -64,6 +72,7 @@ cli.command("status", {
     console.log(label("Expires", new Date(payment.expiresAt * 1000).toLocaleString()));
     console.log();
 
+    telemetry.track("command_succeeded", { command: "status" });
     return {
       merchant: payment.merchant.name,
       amount: payment.amount,
@@ -87,6 +96,7 @@ cli.command("create", {
     proxy: z.boolean().optional().describe("Proxy through frontend (no API keys needed)"),
   }),
   async run(c) {
+    telemetry.track("command_invoked", { command: "create" });
     const client = resolveClient(c.options);
 
     const result = await client.createPayment({
@@ -101,6 +111,7 @@ cli.command("create", {
     console.log(label("Expires", new Date(result.expiresAt * 1000).toLocaleString()));
     console.log();
 
+    telemetry.track("command_succeeded", { command: "create" });
     return {
       paymentId: result.paymentId,
       gatewayUrl: result.gatewayUrl,
@@ -126,6 +137,7 @@ cli.command("checkout", {
     pobAddress: z.string().optional().describe("Place of birth city/state, e.g. 'New York, NY'"),
   }),
   async run(c) {
+    telemetry.track("command_invoked", { command: "checkout" });
     const client = resolveClient(c.options);
 
     // 1. Fetch payment details
@@ -169,6 +181,7 @@ cli.command("checkout", {
       console.log(label("Action", `${rpc.method} on ${rpc.chain_id}`));
       console.log("  Approve the request in your wallet app...");
       const result = await sendTransaction(provider.path, option.account, rpc.chain_id, rpc);
+      telemetry.track("transaction_sent", { command: "checkout", chainId: rpc.chain_id });
       results.push(result);
     }
 
@@ -223,6 +236,7 @@ cli.command("checkout", {
     }
     console.log();
 
+    telemetry.track("command_succeeded", { command: "checkout" });
     return {
       paymentId: c.args.paymentId,
       status: final.status,
@@ -241,6 +255,10 @@ function resolveAction(action: Action): WalletRpcAction {
   return JSON.parse(json) as WalletRpcAction;
 }
 
-cli.serve();
+cli.serve(undefined, {
+  exit: (code: number) => {
+    telemetry.flush().finally(() => process.exit(code));
+  },
+});
 
 export default cli;

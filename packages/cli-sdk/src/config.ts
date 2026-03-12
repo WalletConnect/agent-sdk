@@ -7,6 +7,7 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
 interface Config {
   projectId?: string;
+  telemetry?: string;
 }
 
 function readConfig(): Config {
