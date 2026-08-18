@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
@@ -73,6 +73,18 @@ describe("sessions", () => {
 
     it("throws for non-existent session", () => {
       expect(() => loadSession("nonexistent")).toThrow("Session not found");
+    });
+
+    it("rejects path-like session IDs and does not read sibling keystores", () => {
+      const keysDir = join(TEST_DIR, "home", ".config", "wallet", "keys");
+      mkdirSync(keysDir, { recursive: true });
+      writeFileSync(
+        join(keysDir, "0xdead.json"),
+        JSON.stringify({ mnemonic: "SECRET_MNEMONIC", address: "0xdead" }),
+      );
+
+      expect(() => loadSession("../keys/0xdead")).toThrow("Session not found");
+      expect(() => loadSession("/tmp/x")).toThrow("Session not found");
     });
   });
 

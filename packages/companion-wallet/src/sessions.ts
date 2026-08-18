@@ -16,7 +16,14 @@ import type {
 
 const SESSIONS_DIR = join(homedir(), ".config", "wallet", "sessions");
 
+// grantSession emits 16 random bytes as hex. Reject anything else so
+// sessionId cannot walk out of SESSIONS_DIR via `..` or absolute paths.
+const SESSION_ID = /^[0-9a-f]{32}$/;
+
 function sessionFilePath(sessionId: string): string {
+  if (!SESSION_ID.test(sessionId)) {
+    throw new Error(`Session not found: ${sessionId}`);
+  }
   return join(SESSIONS_DIR, `${sessionId}.json`);
 }
 
