@@ -15,7 +15,7 @@ declare const __VERSION__: string;
 const METADATA = {
   name: "WalletConnect Agent SDK",
   description: "WalletConnect CLI",
-  url: "https://walletconnect.network",
+  url: "https://walletconnect.com/network",
   icons: [],
 };
 
