@@ -1,7 +1,6 @@
 import { WalletConnectCLI } from "./client.js";
 import { resolveProjectId, setConfigValue, getConfigValue } from "./config.js";
 import { trySwidgeBeforeSend, swidgeViaWalletConnect, rpcUrl, waitForReceipt } from "./swidge.js";
-import type { TxReceipt } from "./swidge.js";
 
 // Prevent unhandled WC relay errors from crashing the process with minified dumps
 process.on("unhandledRejection", (err) => {
@@ -15,7 +14,7 @@ declare const __VERSION__: string;
 const METADATA = {
   name: "WalletConnect Agent SDK",
   description: "WalletConnect CLI",
-  url: "https://walletconnect.network",
+  url: "https://walletconnect.com/network",
   icons: [],
 };
 
