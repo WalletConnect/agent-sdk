@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getToken, getTokenSymbols } from "../src/tokens.js";
+import { getToken, getTokenSymbols, parseTokenAmount } from "../src/tokens.js";
 
 describe("tokens", () => {
   describe("WCT on Optimism", () => {
@@ -33,6 +33,24 @@ describe("tokens", () => {
     it("does not include wct in Ethereum token symbols", () => {
       const symbols = getTokenSymbols("eip155:1");
       expect(symbols).not.toContain("wct");
+    });
+  });
+
+  describe("parseTokenAmount", () => {
+    it("parses a fractional USDC amount", () => {
+      expect(parseTokenAmount("1.5", 6)).toBe(1_500_000n);
+    });
+
+    it("rejects a second decimal point instead of signing the prefix", () => {
+      expect(() => parseTokenAmount("1.2.3", 6)).toThrow("Invalid amount");
+    });
+
+    it("rejects a negative amount", () => {
+      expect(() => parseTokenAmount("-1.5", 6)).toThrow("Invalid amount");
+    });
+
+    it("rejects an empty amount", () => {
+      expect(() => parseTokenAmount("", 6)).toThrow("Invalid amount");
     });
   });
 });
