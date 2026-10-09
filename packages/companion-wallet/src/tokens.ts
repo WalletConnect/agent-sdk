@@ -98,6 +98,9 @@ export function getLifiTokenAddress(symbol: string, chain: string): string {
  * Parse a human-readable amount into its smallest unit (wei / micro-USDC).
  */
 export function parseTokenAmount(amount: string, decimals: number): bigint {
+  if (!amount || !/^\d+(\.\d+)?$/.test(amount)) {
+    throw new Error(`Invalid amount: ${amount}`);
+  }
   const [whole = "0", frac = ""] = amount.split(".");
   const paddedFrac = frac.padEnd(decimals, "0").slice(0, decimals);
   return BigInt(whole) * 10n ** BigInt(decimals) + BigInt(paddedFrac);
